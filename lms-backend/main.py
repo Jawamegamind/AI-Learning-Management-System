@@ -1,7 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from database.supabase_db import create_supabase_client
+import bcrypt
+from models.user_model import User
 
 app = FastAPI()
+
+# Initializing the Supabase client
+supabase = create_supabase_client()
 
 app.add_middleware(
     CORSMiddleware,
@@ -18,3 +24,37 @@ def read_root():
 @app.get("/api/test")
 def test_api():
     return {"message": "This is a test API"}
+
+def user_exists(key: str = "email", value: str = None):
+    user = supabase.from_("users").select("*").eq(key, value).execute()
+    return len(user.data) > 0
+
+# Route to register a new user
+@app.post("/api/register")
+def create_user(user: User):
+    try:
+        # Print the retrieved user data
+        print(user)
+        # Convert email to lowercase
+        user_email = user.email.lower()
+        # Hash password
+        hased_password = bcrypt.hashpw(user.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        print("The hashed password is", hased_password)
+
+        # Check if user already exists
+        if user_exists(value=user_email):
+            return {"message": "User already exists"}
+
+        # Add user to users table
+        user = supabase.from_("users")\
+            .insert({"name": user.name, "email": user_email, "password": hased_password})\
+            .execute()
+
+        # Check if user was added
+        if user:
+            return {"message": "User created successfully"}
+        else:
+            return {"message": "User creation failed"}
+    except Exception as e:
+        print("Error: ", e)
+        return {"message": "User creation failed"}

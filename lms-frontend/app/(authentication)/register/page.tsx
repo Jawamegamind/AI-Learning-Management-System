@@ -13,24 +13,10 @@ import Paper from '@mui/material/Paper';
 import { useRouter } from 'next/navigation';
 
 interface User {
+    name: string;
     email: string;
-    firstName: string;
-    lastName: string;
     password: string;
 }
-
-// function Copyright(props: { sx?: object }) {
-//   return (
-//     <Typography variant="body2" color="text.secondary" align="center" {...props}>
-//       {'Copyright © '}
-//       <Link color="inherit" href="https://jawamegamind-portfolio.vercel.app/" target="_blank" rel="noopener noreferrer">
-//         Jawad Saeed
-//       </Link>{' '}
-//       {new Date().getFullYear()}
-//       {'.'}
-//     </Typography>
-//   );
-// }
 
 export default function SignIn() {
     const router = useRouter();
@@ -38,8 +24,27 @@ export default function SignIn() {
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const data = new FormData(event.currentTarget);
+        const name = data.get('name') as string;
         const email = data.get('email') as string;
         const password = data.get('password') as string;
+        console.log({ name, email, password }); 
+
+        // Sending api request to register user
+        fetch('http://localhost:8000/api/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ name, email, password }),
+        })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+                router.push('/login');
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
     };
 
     return (
@@ -50,9 +55,18 @@ export default function SignIn() {
                     <LockOutlinedIcon />
                 </Avatar>
                 <Typography component="h1" variant="h5">
-                    Login
+                    Register
                 </Typography>
                 <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 2 }}>
+                    <TextField
+                        margin="normal"
+                        required
+                        fullWidth
+                        id="name"
+                        label="Name"
+                        name="name"
+                        autoComplete="name"
+                    />
                     <TextField
                         margin="normal"
                         required
@@ -78,21 +92,15 @@ export default function SignIn() {
                         variant="contained"
                         sx={{ mt: 3, mb: 2 }}
                     >
-                        Sign In
+                        Sign Up
                     </Button>
-                    <Box display="flex" justifyContent="center">
-                        <Link href="/forgot-password" variant="body2">
-                            Forgot password?
-                        </Link>
-                    </Box>
                 </Box>
             </Paper>
             <Box mt={2} textAlign="center">
-                <Link href="/register" variant="body2">
-                    {"Don't have an account? Sign Up"}
+                <Link href="/login" variant="body2">
+                    {"Already have an account? Sign In"}
                 </Link>
             </Box>
-            {/* <Copyright sx={{ mt: 4, mb: 2 }} /> */}
         </Container>
     );
 }

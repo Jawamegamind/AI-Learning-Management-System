@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+lms-frontend/node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -14,7 +14,7 @@
 /coverage
 
 # next.js
-/.next/
+lms-frontend/.next/
 /out/
 
 # production
@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# python cache files
+lms-backend/__pycache__/
+lms-backend/**/*.pyc
+lms-backend/**/*.pyo
+lms-backend/**/*.pyd
