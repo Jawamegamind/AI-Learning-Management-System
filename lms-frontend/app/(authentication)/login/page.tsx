@@ -12,12 +12,12 @@ import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
 import { useRouter } from 'next/navigation';
 
-interface User {
-    email: string;
-    firstName: string;
-    lastName: string;
-    password: string;
-}
+// interface User {
+//     email: string;
+//     firstName: string;
+//     lastName: string;
+//     password: string;
+// }
 
 // function Copyright(props: { sx?: object }) {
 //   return (
@@ -34,12 +34,41 @@ interface User {
 
 export default function SignIn() {
     const router = useRouter();
-    const [user, setUser] = React.useState<User | null>(null);
+    // const [user, setUser] = React.useState<User | null>(null);
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const data = new FormData(event.currentTarget);
         const email = data.get('email') as string;
         const password = data.get('password') as string;
+
+        // Sending api request to login user
+        fetch('http://localhost:8000/api/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, password }),
+        })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+                // Check the messages from the backend for appropraite alerts
+                if (data.message == "User not found") {
+                    alert("User not found")
+                } else if (data.message == "Invalid password") {
+                    alert("Invalid password")
+                } else if (data.message == "Login successful") {
+                    alert("Login successful")
+                    // Redirect to the dashboard
+                    router.push('/dashboard');
+                }
+                else if (data.message == "Login failed") {
+                    alert("Login failed")
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
     };
 
     return (

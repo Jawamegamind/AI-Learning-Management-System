@@ -12,15 +12,15 @@ import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
 import { useRouter } from 'next/navigation';
 
-interface User {
-    name: string;
-    email: string;
-    password: string;
-}
+// interface User {
+//     name: string;
+//     email: string;
+//     password: string;
+// }
 
 export default function SignIn() {
     const router = useRouter();
-    const [user, setUser] = React.useState<User | null>(null);
+    // const [user, setUser] = React.useState<User | null>(null);
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const data = new FormData(event.currentTarget);

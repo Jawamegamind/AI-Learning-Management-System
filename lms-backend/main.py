@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from database.supabase_db import create_supabase_client
 import bcrypt
 from models.user_model import User
+from models.login_model import LoginRequestModel
 
 app = FastAPI()
 
@@ -58,3 +59,30 @@ def create_user(user: User):
     except Exception as e:
         print("Error: ", e)
         return {"message": "User creation failed"}
+
+# Route to login a user
+@app.post("/api/login")
+def login_user(login_request: LoginRequestModel):
+    try:
+        # Convert email to lowercase
+        user_email = login_request.email.lower()
+
+        # Retrieve user from users table
+        response = supabase.from_("users").select("*").eq("email", user_email).execute()
+
+        # Check if user exists
+        if not response.data:
+            return {"message": "User not found"}
+
+        # Extract user info
+        db_user = response.data[0]
+        
+        # Check if password matches
+        if bcrypt.checkpw(login_request.password.encode('utf-8'), db_user['password'].encode('utf-8')):
+            return {"message": "Login successful"}
+        else:
+            return {"message": "Invalid password"}
+
+    except Exception as e:
+        print("Error:", e)
+        return {"message": "Login failed"}
