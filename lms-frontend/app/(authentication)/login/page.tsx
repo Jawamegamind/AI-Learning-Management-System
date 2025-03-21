@@ -10,29 +10,32 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Typography from '@mui/material/Typography';
 import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
+import { Alert } from '@mui/material';
+import Snackbar, {SnackbarCloseReason} from '@mui/material/Snackbar';
 import { useRouter } from 'next/navigation';
 
-// interface User {
-//     email: string;
-//     firstName: string;
-//     lastName: string;
-//     password: string;
-// }
-
-// function Copyright(props: { sx?: object }) {
-//   return (
-//     <Typography variant="body2" color="text.secondary" align="center" {...props}>
-//       {'Copyright © '}
-//       <Link color="inherit" href="https://jawamegamind-portfolio.vercel.app/" target="_blank" rel="noopener noreferrer">
-//         Jawad Saeed
-//       </Link>{' '}
-//       {new Date().getFullYear()}
-//       {'.'}
-//     </Typography>
-//   );
-// }
 
 export default function SignIn() {
+    const [open, setOpen] = React.useState(false);
+    const [snackbarMessage, setSnackbarMessage] = React.useState('');
+    const [snackbarSeverity, setSnackbarSeverity] = React.useState<'success' | 'error' | 'info' | 'warning'>('info');
+    
+    const handleClick = (message: string, severity: 'success' | 'error' | 'info' | 'warning') => {
+        setSnackbarMessage(message);
+        setSnackbarSeverity(severity);
+        setOpen(true);
+    };
+
+    const handleClose = (
+        event?: React.SyntheticEvent | Event,
+        reason?: SnackbarCloseReason,
+    ) => {
+        if (reason === 'clickaway') {
+            return;
+        }
+        setOpen(false);
+    };
+
     const router = useRouter();
     // const [user, setUser] = React.useState<User | null>(null);
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -58,9 +61,12 @@ export default function SignIn() {
                 } else if (data.message == "Invalid password") {
                     alert("Invalid password")
                 } else if (data.message == "Login successful") {
-                    alert("Login successful")
-                    // Redirect to the dashboard
-                    router.push('/dashboard');
+                    handleClick("Login successful", "success");
+                    // Delay redirect to let snackbar show
+                    setTimeout(() => {
+                        router.push('/dashboard');
+                    }, 1000); // 2-second delay
+                    // router.push('/dashboard');
                 }
                 else if (data.message == "Login failed") {
                     alert("Login failed")
@@ -121,6 +127,21 @@ export default function SignIn() {
                     {"Don't have an account? Sign Up"}
                 </Link>
             </Box>
+            <Snackbar
+                open={open}
+                autoHideDuration={6000}
+                onClose={handleClose}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            >
+                <Alert
+                    onClose={handleClose}
+                    severity={snackbarSeverity}
+                    variant="filled"
+                    sx={{ width: '100%' }}
+                >
+                    {snackbarMessage}
+                </Alert>
+            </Snackbar>
             {/* <Copyright sx={{ mt: 4, mb: 2 }} /> */}
         </Container>
     );
