@@ -10,6 +10,8 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Typography from '@mui/material/Typography';
 import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
+import { Alert } from '@mui/material';
+import Snackbar, {SnackbarCloseReason} from '@mui/material/Snackbar';
 import { useRouter } from 'next/navigation';
 
 // interface User {
@@ -19,6 +21,26 @@ import { useRouter } from 'next/navigation';
 // }
 
 export default function SignIn() {
+    const [open, setOpen] = React.useState(false);
+    const [snackbarMessage, setSnackbarMessage] = React.useState('');
+    const [snackbarSeverity, setSnackbarSeverity] = React.useState<'success' | 'error' | 'info' | 'warning'>('info');
+    
+    const handleClick = (message: string, severity: 'success' | 'error' | 'info' | 'warning') => {
+        setSnackbarMessage(message);
+        setSnackbarSeverity(severity);
+        setOpen(true);
+    };
+
+    const handleClose = (
+        event?: React.SyntheticEvent | Event,
+        reason?: SnackbarCloseReason,
+    ) => {
+        if (reason === 'clickaway') {
+            return;
+        }
+        setOpen(false);
+    };
+
     const router = useRouter();
     // const [user, setUser] = React.useState<User | null>(null);
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -28,6 +50,12 @@ export default function SignIn() {
         const email = data.get('email') as string;
         const password = data.get('password') as string;
         console.log({ name, email, password }); 
+
+        // Check for empty fields
+        if (!name || !email || !password) {
+            handleClick("All fields are required", "error");
+            return;
+        }
 
         // Sending api request to register user
         fetch('http://localhost:8000/api/register', {
@@ -39,8 +67,21 @@ export default function SignIn() {
         })
             .then(response => response.json())
             .then(data => {
-                console.log('Success:', data);
-                router.push('/login');
+                console.log(data);
+                if (data.message == "User already exists") {
+                    handleClick("User already exists", "error");
+                }
+                else if (data.message == "User created successfully") {
+                    // Displaying the snackbar alert
+                    handleClick("Registration successful", "success");
+                    // Delay redirect to let snackbar show
+                    setTimeout(() => {
+                        router.push('/login');
+                    }, 1000); // 2-second delay
+                }
+                else if (data.message == "User creation failed") {
+                    handleClick("Registration failed", "error");
+                }
             })
             .catch((error) => {
                 console.error('Error:', error);
@@ -101,6 +142,21 @@ export default function SignIn() {
                     {"Already have an account? Sign In"}
                 </Link>
             </Box>
+            <Snackbar
+                open={open}
+                autoHideDuration={6000}
+                onClose={handleClose}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                sx={{ width: '100%' }}
+            >
+                <Alert
+                    onClose={handleClose}
+                    severity={snackbarSeverity}
+                    variant="filled"
+                >
+                    {snackbarMessage}
+                </Alert>
+            </Snackbar>
         </Container>
     );
 }

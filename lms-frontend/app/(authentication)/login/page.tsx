@@ -137,7 +137,6 @@ export default function SignIn() {
                     onClose={handleClose}
                     severity={snackbarSeverity}
                     variant="filled"
-                    sx={{ width: '100%' }}
                 >
                     {snackbarMessage}
                 </Alert>
