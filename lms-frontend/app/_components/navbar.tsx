@@ -13,10 +13,7 @@ import Button from '@mui/material/Button';
 import MenuItem from '@mui/material/MenuItem';
 import { useRouter } from 'next/navigation';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-// import authentication from '../_utils/authentication';
-// import { signOut } from 'firebase/auth';
-// import { usercontext } from '../_context/authContext';
-// import { useContext } from 'react';
+import {logout} from '@/app/(authentication)/login/actions';
 
 const pages = ['Home', 'Logout', 'Profile'];
 
@@ -48,7 +45,8 @@ function ResponsiveAppBar() {
   const handleCloseNavMenu = (page?: string) => {
     setAnchorElNav(null);
     if (page === 'Logout') {
-        // handleSignOut();
+        logout();
+        router.push('/login');
     }
     else if (page === 'Profile') {
         router.push('/profile');

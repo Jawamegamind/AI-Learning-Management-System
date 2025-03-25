@@ -12,7 +12,8 @@ import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
 import { Alert } from '@mui/material';
 import Snackbar, {SnackbarCloseReason} from '@mui/material/Snackbar';
-import { useRouter } from 'next/navigation';
+// import { useRouter } from 'next/navigation';
+import {login} from './actions';
 
 
 export default function SignIn() {
@@ -36,45 +37,55 @@ export default function SignIn() {
         setOpen(false);
     };
 
-    const router = useRouter();
+    // const router = useRouter();
     // const [user, setUser] = React.useState<User | null>(null);
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        const data = new FormData(event.currentTarget);
-        const email = data.get('email') as string;
-        const password = data.get('password') as string;
+        const formData = new FormData(event.currentTarget);
 
-        // Sending api request to login user
-        fetch('http://localhost:8000/api/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email, password }),
-        })
-            .then(response => response.json())
-            .then(data => {
-                console.log(data);
-                // Check the messages from the backend for appropraite alerts
-                if (data.message == "User not found") {
-                    alert("User not found")
-                } else if (data.message == "Invalid password") {
-                    alert("Invalid password")
-                } else if (data.message == "Login successful") {
-                    handleClick("Login successful", "success");
-                    // Delay redirect to let snackbar show
-                    setTimeout(() => {
-                        router.push('/dashboard');
-                    }, 1000); // 2-second delay
-                    // router.push('/dashboard');
-                }
-                else if (data.message == "Login failed") {
-                    alert("Login failed")
-                }
-            })
-            .catch((error) => {
-                console.error('Error:', error);
-            });
+        // Using the login action
+        try {
+            await login(formData);
+            handleClick("Login successful", "success");
+        } catch (error) {
+            console.error('Error:', error);
+            handleClick("Login failed", "error");
+        }
+
+        // const email = data.get('email') as string;
+        // const password = data.get('password') as string;
+
+        // // Sending api request to login user
+        // fetch('http://localhost:8000/api/login', {
+        //     method: 'POST',
+        //     headers: {
+        //         'Content-Type': 'application/json',
+        //     },
+        //     body: JSON.stringify({ email, password }),
+        // })
+        //     .then(response => response.json())
+        //     .then(data => {
+        //         console.log(data);
+        //         // Check the messages from the backend for appropriate alerts
+        //         if (data.message == "User not found") {
+        //             alert("User not found")
+        //         } else if (data.message == "Invalid password") {
+        //             alert("Invalid password")
+        //         } else if (data.message == "Login successful") {
+        //             handleClick("Login successful", "success");
+        //             // Delay redirect to let snackbar show
+        //             setTimeout(() => {
+        //                 router.push('/dashboard');
+        //             }, 1000); // 2-second delay
+        //             // router.push('/dashboard');
+        //         }
+        //         else if (data.message == "Login failed") {
+        //             alert("Login failed")
+        //         }
+        //     })
+        //     .catch((error) => {
+        //         console.error('Error:', error);
+        //     });
     };
 
     return (
