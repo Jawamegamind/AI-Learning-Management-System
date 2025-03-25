@@ -12,7 +12,7 @@ import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
 import { Alert } from '@mui/material';
 import Snackbar, {SnackbarCloseReason} from '@mui/material/Snackbar';
-import { useRouter } from 'next/navigation';
+import { register } from './actions';
 
 // interface User {
 //     name: string;
@@ -41,14 +41,13 @@ export default function SignIn() {
         setOpen(false);
     };
 
-    const router = useRouter();
     // const [user, setUser] = React.useState<User | null>(null);
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        const data = new FormData(event.currentTarget);
-        const name = data.get('name') as string;
-        const email = data.get('email') as string;
-        const password = data.get('password') as string;
+        const formData = new FormData(event.currentTarget);
+        const name = formData.get('name') as string;
+        const email = formData.get('email') as string;
+        const password = formData.get('password') as string;
         console.log({ name, email, password }); 
 
         // Check for empty fields
@@ -57,35 +56,44 @@ export default function SignIn() {
             return;
         }
 
-        // Sending api request to register user
-        fetch('http://localhost:8000/api/register', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ name, email, password }),
-        })
-            .then(response => response.json())
-            .then(data => {
-                console.log(data);
-                if (data.message == "User already exists") {
-                    handleClick("User already exists", "error");
-                }
-                else if (data.message == "User created successfully") {
-                    // Displaying the snackbar alert
-                    handleClick("Registration successful", "success");
-                    // Delay redirect to let snackbar show
-                    setTimeout(() => {
-                        router.push('/login');
-                    }, 1000); // 2-second delay
-                }
-                else if (data.message == "User creation failed") {
-                    handleClick("Registration failed", "error");
-                }
-            })
-            .catch((error) => {
-                console.error('Error:', error);
-            });
+        // Using the register action
+        try {
+            register(formData);
+            handleClick("Registration successful", "success");
+        } catch (error) {
+            console.error('Error:', error);
+            handleClick("Registration failed", "error");
+        }
+
+        // // Sending api request to register user
+        // fetch('http://localhost:8000/api/register', {
+        //     method: 'POST',
+        //     headers: {
+        //         'Content-Type': 'application/json',
+        //     },
+        //     body: JSON.stringify({ name, email, password }),
+        // })
+        //     .then(response => response.json())
+        //     .then(data => {
+        //         console.log(data);
+        //         if (data.message == "User already exists") {
+        //             handleClick("User already exists", "error");
+        //         }
+        //         else if (data.message == "User created successfully") {
+        //             // Displaying the snackbar alert
+        //             handleClick("Registration successful", "success");
+        //             // Delay redirect to let snackbar show
+        //             setTimeout(() => {
+        //                 router.push('/login');
+        //             }, 1000); // 2-second delay
+        //         }
+        //         else if (data.message == "User creation failed") {
+        //             handleClick("Registration failed", "error");
+        //         }
+        //     })
+        //     .catch((error) => {
+        //         console.error('Error:', error);
+        //     });
     };
 
     return (
