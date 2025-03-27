@@ -42,7 +42,7 @@ export default function SignIn() {
     };
 
     // const [user, setUser] = React.useState<User | null>(null);
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
         const name = formData.get('name') as string;
@@ -58,8 +58,16 @@ export default function SignIn() {
 
         // Using the register action
         try {
-            register(formData);
-            handleClick("Registration successful", "success");
+            const response = await register(formData);
+            // handleClick("Registration successful", "success");
+
+            // Check the message returned in the response
+            if (response == "User already exists") {
+                handleClick("User already exists", "error");
+            }
+            else if (response == "User registration failed") {
+                handleClick("Registration failed", "error");
+            }
         } catch (error) {
             console.error('Error:', error);
             handleClick("Registration failed", "error");

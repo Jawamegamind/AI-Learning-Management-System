@@ -45,7 +45,7 @@ export const middleware = async (request: NextRequest) => {
         // Getting the session of the authenticated user
         const session = await supabase.auth.getUser()
 
-        console.log("The session is: ", session)
+        // console.log("The session is: ", session)
 
         // If the route is protected and the user is not authenticated, redirect to the login page
         if (isProtectedRoute && session.error) {
