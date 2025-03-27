@@ -42,11 +42,27 @@ export default function SignIn() {
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
+        const email = formData.get('email') as string;
+        const password = formData.get('password') as string;
+
+        // Check for empty fields
+        if (!email || !password) {
+            handleClick("All fields are required", "error");
+            return;
+        }
 
         // Using the login action
         try {
-            await login(formData);
-            handleClick("Login successful", "success");
+            const response = await login(formData);
+            
+            // Checking the response message and displaying appropriate alerts
+            if (response == "User not found") {
+                handleClick("User not found", "error");
+            } else if (response == "Invalid password") {
+                handleClick("Invalid password", "error");
+            } else if (response == "Login failed") {
+                handleClick("Login failed", "error");
+            }
         } catch (error) {
             console.error('Error:', error);
             handleClick("Login failed", "error");
