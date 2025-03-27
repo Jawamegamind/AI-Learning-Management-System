@@ -48,7 +48,7 @@ def create_user(user: User):
 
         # Add user to users table
         user = supabase.from_("users")\
-            .insert({"name": user.name, "email": user_email, "password": hased_password})\
+            .insert({"user_id": user.user_id,"name": user.name, "email": user_email, "password": hased_password, "role": user.role})\
             .execute()
 
         # Check if user was added

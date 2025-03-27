@@ -57,10 +57,8 @@ export default function SignIn() {
             const response = await login(formData);
             
             // Checking the response message and displaying appropriate alerts
-            if (response == "User not found") {
-                handleClick("User not found", "error");
-            } else if (response == "Invalid password") {
-                handleClick("Invalid password", "error");
+            if (response == "Invalid credentials") {
+                handleClick("Invalid credentials", "error");
             } else if (response == "Login failed") {
                 handleClick("Login failed", "error");
             }
