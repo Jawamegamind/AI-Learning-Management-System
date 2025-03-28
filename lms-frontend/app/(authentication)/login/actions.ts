@@ -32,9 +32,27 @@ export async function login(formData: FormData) {
     else {
         console.log('Data:', data)
 
-        // Sign in successful so we redirect to the dashboard
-        revalidatePath('/', 'layout')
-        redirect('/dashboard')
+        // Now basically signing in using our backend to retireve the user details
+        const response = await axios.post('http://localhost:8000/api/login', {
+            user_id: data.user?.id ?? '',
+            email: formdata.email,
+            password: formdata.password
+        })
+        console.log("The backend's response to signing in user is",response.data)
+
+        // Now here we need to check the user's role and based on that redirect to the appropriate dashboard
+        const userObject = response.data.user
+        console.log("The user object is",userObject)
+
+        if (userObject.role == "admin") {
+            console.log("The user is admin")
+            redirect('/admin/dashboard')
+        }
+        else if (userObject.role == "user") {
+            // Sign in successful so we redirect to the dashboard
+            revalidatePath('/', 'layout')
+            redirect('/user/dashboard')
+        }
     }
 
     // // Before loggin in the user using supabase we first log in using our backend

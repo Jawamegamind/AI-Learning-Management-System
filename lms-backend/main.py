@@ -79,7 +79,7 @@ def login_user(login_request: LoginRequestModel):
         
         # Check if password matches
         if bcrypt.checkpw(login_request.password.encode('utf-8'), db_user['password'].encode('utf-8')):
-            return {"message": "Login successful"}
+            return {"message": "Login successful", "user": db_user}
         else:
             return {"message": "Invalid password"}
 
