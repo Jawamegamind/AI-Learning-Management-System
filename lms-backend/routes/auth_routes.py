@@ -55,3 +55,16 @@ def login_user(login_request: LoginRequestModel):
     except Exception as e:
         print("Error:", e)
         return {"message": "Login failed"}
+
+@auth_router.get("/user/{user_id}")
+def get_user(user_id: str):
+    try:
+        response = supabase.from_("users").select("*").eq("user_id", user_id).execute()
+
+        if not response.data:
+            return {"message": "User not found"}
+
+        return {"user": response.data[0]}
+    except Exception as e:
+        print("Error:", e)
+        return {"message": "Failed to retrieve user"}

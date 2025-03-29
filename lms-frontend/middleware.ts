@@ -2,7 +2,11 @@ import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from 'next/server'
 
 // Declaring the routes that need to be protected
-const protectedRoutes = ['/user/dashboard', '/admin/dashboard']
+const protectedRoutes = [
+  '/user/dashboard', 
+  '/admin/dashboard', 
+  '/admin/create_course',
+]
 
 /**
  * 

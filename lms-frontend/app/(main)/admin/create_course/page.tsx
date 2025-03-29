@@ -7,15 +7,54 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import Navbar from '../../../_components/navbar';
 import { useState } from 'react';
 import { Dayjs } from 'dayjs';
+import { Alert } from '@mui/material';
+import Snackbar, {SnackbarCloseReason} from '@mui/material/Snackbar';
+import { useEffect } from 'react';
+import { createCourse, getCurrentUser } from './actions';
 
 export default function CreateCourseForm() {
-    const [courseData, setCourseData] = useState({
+    const [courseData, setCourseData] = useState<{
+        title: string;
+        description: string;
+        start_date: Dayjs | null;
+        end_date: Dayjs | null;
+        max_students: string;
+    }>({
         title: '',
         description: '',
         start_date: null,
         end_date: null,
         max_students: ''
     });
+    const [userData, setUserData] = useState<any>(null); // Store admin user data
+    const [open, setOpen] = React.useState(false);
+    const [snackbarMessage, setSnackbarMessage] = React.useState('');
+    const [snackbarSeverity, setSnackbarSeverity] = React.useState<'success' | 'error' | 'info' | 'warning'>('info');
+
+    // Fetch the user data on component mount
+    useEffect(() => {
+        const fetchUserData = async () => {
+            const user = await getCurrentUser();
+            setUserData(user); // Store user data
+        };
+        fetchUserData();
+    }, []);
+    
+    const handleClick = (message: string, severity: 'success' | 'error' | 'info' | 'warning') => {
+        setSnackbarMessage(message);
+        setSnackbarSeverity(severity);
+        setOpen(true);
+    };
+
+    const handleClose = (
+        event?: React.SyntheticEvent | Event,
+        reason?: SnackbarCloseReason,
+    ) => {
+        if (reason === 'clickaway') {
+            return;
+        }
+        setOpen(false);
+    };
 
     const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setCourseData({
@@ -31,9 +70,46 @@ export default function CreateCourseForm() {
         });
     };
 
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        console.log(courseData);
+        // Validate the form data
+        if (!courseData.title || !courseData.description || !courseData.start_date || !courseData.end_date || !courseData.max_students) {
+            handleClick("All fields are required", "error");
+            return;
+        }
+        // Checking the max students is negative
+        if (parseInt(courseData.max_students) < 0) {
+            handleClick("Max students cannot be negative", "error");
+            return;
+        }
+        // Checking the start date is after the end date
+        if (courseData.start_date && courseData.end_date && courseData.start_date.isAfter(courseData.end_date)) {
+            handleClick("Start date cannot be after end date", "error");
+            return;
+        }
+
+        // Format dates to YYYY-MM-DD
+        const formatDate = (date: Dayjs | null) => date?.format('YYYY-MM-DD') || '';
+        
+        // Now sending the data to the server
+        const formData = new FormData();
+        formData.append('title', courseData.title);
+        formData.append('description', courseData.description);
+        formData.append('start_date', formatDate(courseData.start_date));
+        formData.append('end_date', formatDate(courseData.end_date));
+        formData.append('max_students', courseData.max_students);
+        const response = await createCourse(formData, userData);
+        // console.log("The response is", response);
+
+        // console.log(courseData);
+
+        // Check the returned response data and display the alerts based on that
+        if (response.message == "Course created successfully") {
+            handleClick("Course created successfully", "success");
+        }
+        else if (response.message == "Course creation failed") {
+            handleClick("Course creation failed", "error");
+        }
     };
 
     return (
@@ -89,6 +165,20 @@ export default function CreateCourseForm() {
                     </Box>
                 </form>
             </Paper>
+            <Snackbar
+                open={open}
+                autoHideDuration={6000}
+                onClose={handleClose}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            >
+                <Alert
+                    onClose={handleClose}
+                    severity={snackbarSeverity}
+                    variant="filled"
+                >
+                    {snackbarMessage}
+                </Alert>
+            </Snackbar>
         </LocalizationProvider>
     );
 }
