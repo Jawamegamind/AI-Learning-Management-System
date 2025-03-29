@@ -15,9 +15,11 @@
     "@mui/icons-material": "^6.4.7",
     "@mui/material": "^6.4.7",
     "@mui/material-nextjs": "^6.4.3",
+    "@mui/x-date-pickers": "^7.28.2",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.49.3",
     "axios": "^1.8.4",
+    "dayjs": "^1.11.13",
     "next": "^15.2.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

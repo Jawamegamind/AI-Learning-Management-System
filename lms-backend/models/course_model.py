@@ -26,7 +26,7 @@ class CourseEnrollment(BaseModel):
     course_id: int
     user_email: str
     role: str  # 'instructor' or 'student'
-    enrolled_at: datetime = datetime.now(datetime.timezone.utc)
+    enrolled_at: datetime = datetime.now()
 
     class Config:
         from_attributes = True

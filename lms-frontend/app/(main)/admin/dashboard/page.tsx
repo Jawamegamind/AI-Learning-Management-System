@@ -4,9 +4,12 @@ import * as React from 'react';
 import Navbar from '../../../_components/navbar';
 import { createClient } from '@/utils/supabase/client';
 import {useState, useLayoutEffect} from 'react';
+import { Button } from '@mui/material';
+import { useRouter } from 'next/navigation';
 
 export default function Dashboard() {
     const [user, setUser] = useState<any>(null);
+    const router = useRouter();
 
     useLayoutEffect(() => {
         const fetchUser = async () => {
@@ -23,6 +26,10 @@ export default function Dashboard() {
         fetchUser();
     }, []);
 
+    const handleCreateCourse = () => {
+        router.push("/admin/create_course");
+    };
+
     return (
         <div>
             <Navbar />
@@ -31,6 +38,9 @@ export default function Dashboard() {
                 <div>
                     <h2>Welcome, {user.email}!</h2>
                     <pre>{JSON.stringify(user, null, 2)}</pre>
+                    <Button variant="contained" color="primary" onClick={handleCreateCourse} sx={{ mt: 2 }}>
+                        Create New Course
+                    </Button>
                 </div>
             ) : (
                 <p>Loading user data...</p>
