@@ -6,6 +6,7 @@ const protectedRoutes = [
   '/user/dashboard', 
   '/admin/dashboard', 
   '/admin/create_course',
+  'admin/view_courses',
 ]
 
 /**

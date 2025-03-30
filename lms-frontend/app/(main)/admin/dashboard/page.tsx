@@ -30,6 +30,10 @@ export default function Dashboard() {
         router.push("/admin/create_course");
     };
 
+    const handleViewCourses = () => {
+        router.push("/admin/view_courses");
+    }
+
     return (
         <div>
             <Navbar />
@@ -40,6 +44,9 @@ export default function Dashboard() {
                     <pre>{JSON.stringify(user, null, 2)}</pre>
                     <Button variant="contained" color="primary" onClick={handleCreateCourse} sx={{ mt: 2 }}>
                         Create New Course
+                    </Button>
+                    <Button variant="contained" color="primary" onClick={handleViewCourses} sx={{ mt: 2 }}>
+                        View All Courses
                     </Button>
                 </div>
             ) : (
