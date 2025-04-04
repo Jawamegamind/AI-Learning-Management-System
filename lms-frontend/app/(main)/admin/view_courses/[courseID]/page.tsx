@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useEffect, useLayoutEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import React, { useLayoutEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import axios from "axios";
 import Box from "@mui/joy/Box";
 import Typography from "@mui/joy/Typography";
@@ -15,14 +15,33 @@ import { Alert } from '@mui/material';
 import Snackbar, {SnackbarCloseReason} from '@mui/material/Snackbar';
 import ResponsiveAppBar from "@/app/_components/navbar";
 
+interface Course {
+    title: string;
+    description: string;
+    // Add other properties of the course object if needed
+}
+
+interface User {
+    user_id: string;
+    name: string;
+    email: string;
+    password: string;
+    role: string;
+}
+
+interface Enrollment {
+    user_id: string;
+    role: string;
+}
+
 export default function ManageCoursePage() {
-    const router = useRouter();
+    // const router = useRouter();
     const { courseID } = useParams();
     console.log("The courseId is: ", courseID);
-
-    const [course, setCourse] = useState(null);
-    const [enrollments, setEnrollments] = useState([]);
-    const [users, setUsers] = useState([]);
+    
+    const [course, setCourse] = useState<Course | null>(null);
+    const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+    const [users, setUsers] = useState<User[]>([]);
     const [selectedUser, setSelectedUser] = useState("");
     const [selectedRole, setSelectedRole] = useState("student");
     const [open, setOpen] = React.useState(false);
@@ -55,31 +74,8 @@ export default function ManageCoursePage() {
         }
       };
     
-    //   const fetchUsers = async () => {
-    //     try {
-    //       const response = await axios.get("http://localhost:8000/api/users");
-    //       console.log("Users: ", response.data);
-    //       const enrolledUserIds = new Set(enrollments.map((e) => e.user_id));
-    //       const availableUsers = response.data.filter((user) => !enrolledUserIds.has(user.id));
-    //       setUsers(availableUsers);
-    //     } catch (error) {
-    //       console.error("Error fetching users", error);
-    //     }
-    //   };
-    
-    // useEffect(() => {
-    //     if (courseID) {
-    //         fetchCourseData();
-    //     }
-    // }, [courseID]);
 
-    // useEffect(() => {
-    // if (enrollments.length) {
-    //     fetchUsers();
-    // }
-    // }, [enrollments]);
-
-    useEffect(() => {
+    useLayoutEffect(() => {
         const fetchData = async () => {
           try {
             const courseRes = await axios.get(`http://localhost:8000/api/courses/get_course/${courseID}`);
@@ -91,9 +87,9 @@ export default function ManageCoursePage() {
       
             const usersRes = await axios.get("http://localhost:8000/api/users");
             console.log("Users API response:", usersRes.data);
-            const enrolledUserIds = new Set(enrolmentsData.map((e) => e.user_id));
+            const enrolledUserIds = new Set(enrolmentsData.map((e: { user_id: string; }) => e.user_id));
             // const availableUsers = usersRes.data.filter((user) => !enrolledUserIds.has(user.id));
-            const availableUsers = usersRes.data.users.filter((user) => !enrolledUserIds.has(user.id));
+            const availableUsers = usersRes.data.users.filter((user: { id: unknown; }) => !enrolledUserIds.has(user.id));
       
             setUsers(availableUsers);
           } catch (error) {
@@ -131,7 +127,7 @@ export default function ManageCoursePage() {
         }
       };
     
-      const handleRoleChange = async (userId, newRole) => {
+      const handleRoleChange = async (userId: string, newRole: string) => {
         try {
           const response = await axios.post(`http://localhost:8000/api/courses/${courseID}/update_role`, {
             user_id: userId,
@@ -148,7 +144,7 @@ export default function ManageCoursePage() {
         }
       };
     
-      const handleRemoveUser = async (userId) => {
+      const handleRemoveUser = async (userId: string) => {
         try {
           const response = await axios.delete(`http://localhost:8000/api/courses/${courseID}/unenroll_user/${userId}`);
             if (response.data.message === "User unenrolled") {
@@ -159,22 +155,6 @@ export default function ManageCoursePage() {
           console.error("Error removing user", error);
         }
       };
-
-    // const handleAssignUser = async () => {
-    //     try {
-    //         await axios.post(`/api/courses/${courseId}/enroll_user`, {
-    //             user_id: selectedUser,
-    //             role: selectedRole
-    //         });
-    //         alert("User assigned successfully");
-    //     } catch (error) {
-    //         console.error("Error assigning user", error);
-    //     }
-    // };
-
-    // const handleRoleChange = (userId, role) => {
-    //     setEnrollments(enrollments.map(e => e.user_id === userId ? { ...e, role } : e));
-    // };
 
     return (
     <Box>
@@ -195,7 +175,11 @@ export default function ManageCoursePage() {
                 }
                 <Select
                   value={enrollment.role}
-                  onChange={(e, value) => handleRoleChange(enrollment.user_id, value)}
+                  onChange={(e, value) => {
+                    if (value !== null) {
+                      handleRoleChange(enrollment.user_id, value);
+                    }
+                  }}
                   sx={{ mt: 1 }}
                 >
                   <Option value="student">Student</Option>
@@ -218,7 +202,11 @@ export default function ManageCoursePage() {
           <Select
             placeholder="Select User"
             value={selectedUser}
-            onChange={(e, value) => setSelectedUser(value)}
+            onChange={(e, value) => {
+                if (value !== null) {
+                    setSelectedUser(value);
+                }
+            }}
             sx={{ mt: 2 }}
           >
             {users.map((user) => (
@@ -231,7 +219,11 @@ export default function ManageCoursePage() {
           <Select
             placeholder="Select Role"
             value={selectedRole}
-            onChange={(e, value) => setSelectedRole(value)}
+            onChange={(e, value) => {
+                if (value !== null) {
+                    setSelectedRole(value);
+                }
+            }}
             sx={{ mt: 2 }}
           >
             <Option value="student">Student</Option>
