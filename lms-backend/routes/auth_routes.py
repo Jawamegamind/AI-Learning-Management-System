@@ -68,3 +68,16 @@ def get_user(user_id: str):
     except Exception as e:
         print("Error:", e)
         return {"message": "Failed to retrieve user"}
+
+@auth_router.get("/users")
+def get_all_users():
+    try:
+        response = supabase.from_("users").select("*").execute()
+
+        if not response.data:
+            return {"message": "No users found"}
+
+        return {"users": response.data}
+    except Exception as e:
+        print("Error:", e)
+        return {"message": "Failed to retrieve users"}

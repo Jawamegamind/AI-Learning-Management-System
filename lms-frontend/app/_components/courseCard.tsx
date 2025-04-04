@@ -13,7 +13,7 @@ export default function CourseCard({course}) {
     const redirectToMemberInfo = () => {
         // Redirect to the member info page
         // navigate(`/manager-team-info/${user._id}`);
-        router.push(`/manager-team-info/${course._id}`);
+        router.push(`/admin/view_courses/${course.id}`);
     }
 
     return (
