@@ -133,10 +133,15 @@ export default function ManageCoursePage() {
     
       const handleRoleChange = async (userId, newRole) => {
         try {
-          await axios.post(`http://localhost:8000/api/courses/${courseID}/update_role`, {
+          const response = await axios.post(`http://localhost:8000/api/courses/${courseID}/update_role`, {
             user_id: userId,
             role: newRole,
           });
+            if (response.data.message === "User role updated successfully") {
+                handleClick("User role updated successfully", "success");
+            } else {
+                handleClick("Role update failed", "error");
+            }
           fetchCourseData();
         } catch (error) {
           console.error("Error updating role", error);
@@ -145,7 +150,10 @@ export default function ManageCoursePage() {
     
       const handleRemoveUser = async (userId) => {
         try {
-          await axios.delete(`http://localhost:8000/api/courses/${courseID}/unenroll_user/${userId}`);
+          const response = await axios.delete(`http://localhost:8000/api/courses/${courseID}/unenroll_user/${userId}`);
+            if (response.data.message === "User unenrolled") {
+                handleClick("User unenrolled successfully", "success");
+            }
           fetchCourseData();
         } catch (error) {
           console.error("Error removing user", error);
@@ -181,7 +189,10 @@ export default function ManageCoursePage() {
           {enrollments.map((enrollment) => (
             <Card key={enrollment.user_id} variant="outlined" sx={{ marginBottom: 2 }}>
               <CardContent>
-                <Typography level="body-md">User ID: {enrollment.user_id}</Typography>
+                {/* <Typography level="body-md">User ID: {enrollment.user_id}</Typography> */}
+                Name: {
+                    users.find((u) => u.user_id === enrollment.user_id)?.name || enrollment.user_id
+                }
                 <Select
                   value={enrollment.role}
                   onChange={(e, value) => handleRoleChange(enrollment.user_id, value)}

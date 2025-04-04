@@ -116,8 +116,27 @@ def enroll_user(course_id: int, payload: dict):
 def unenroll_user(course_id: int, user_id: str):
     supabase.from_("courseEnrolments")\
         .delete()\
-        .eq("course_ID", course_id)\
-        .eq("user_ID", user_id)\
+        .eq("course_id", course_id)\
+        .eq("user_id", user_id)\
         .execute()
     return {"message": "User unenrolled"}
+
+@course_router.post("/{course_id}/update_role")
+def update_role(course_id: int, payload: dict):
+    print("Payload received:", payload)
+    print("Course ID received:", course_id)
+    try:
+        user_id = payload["user_id"]
+        role = payload["role"]
+
+        # Update the user's role in the course
+        response = supabase.from_("courseEnrolments").update({"role": role}).eq("course_id", course_id).eq("user_id", user_id).execute()
+
+        if not response.data:
+            return {"message": "Role update failed"}
+        else:
+            return {"message": "User role updated successfully", "enrollment": response.data[0]}
+    except Exception as e:
+        print("Error:", e)
+        return {"message": "Role update failed", "error": str(e)}
 
