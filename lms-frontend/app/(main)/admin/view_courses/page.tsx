@@ -3,6 +3,7 @@
 import { useLayoutEffect, useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
+import { CircularProgress } from "@mui/joy";
 import axios from "axios";
 import ResponsiveAppBar from "@/app/_components/navbar";
 import CourseCard from "@/app/_components/courseCard";
@@ -50,7 +51,9 @@ export default function ManagerTeamView() {
                         </Box>
                         <Box sx={{ display: "flex", flexWrap: "wrap" }}>
                             {loading ? (
-                                <Typography variant="h6">Loading courses...</Typography>
+                                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '2rem' }}>
+                                    <CircularProgress />
+                                </div>
                             ) : (
                                 courseEls
                             )}

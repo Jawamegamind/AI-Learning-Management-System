@@ -5,6 +5,7 @@ import Navbar from '../../../_components/navbar';
 import { createClient } from '@/utils/supabase/client';
 import {useState, useLayoutEffect} from 'react';
 import { Button } from '@mui/material';
+import { CircularProgress } from '@mui/joy';
 import { useRouter } from 'next/navigation';
 
 export default function Dashboard() {
@@ -50,7 +51,9 @@ export default function Dashboard() {
                     </Button>
                 </div>
             ) : (
-                <p>Loading user data...</p>
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '2rem' }}>
+                    <CircularProgress />
+                </div>
             )}
         </div>
     );
