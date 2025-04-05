@@ -24,12 +24,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <AppRouterCacheProvider options={{ key: 'css' }}>
-          {children}
-        </AppRouterCacheProvider>
-      </body>
-    </html>
+    <AppRouterCacheProvider options={{ key: 'css' }}>
+      <html lang="en">
+        <body className={`${geistSans.variable} ${geistMono.variable}`}
+          data-new-gr-c-s-check-loaded="14.1229.0"
+          data-gr-ext-installed="">
+            {children}
+        </body>
+      </html>
+    </AppRouterCacheProvider>
   );
 }

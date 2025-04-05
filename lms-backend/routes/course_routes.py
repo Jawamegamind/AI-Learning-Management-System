@@ -140,3 +140,33 @@ def update_role(course_id: int, payload: dict):
         print("Error:", e)
         return {"message": "Role update failed", "error": str(e)}
 
+# Route for getting the user ernollments using their user ID
+@course_router.get("/get_user_enrollments/{user_id}")
+def get_user_enrollments(user_id: str):
+    print("User ID received:", user_id)
+    try:
+        response = supabase.from_("courseEnrolments").select("*").eq("user_id", user_id).execute()
+
+        if not response.data:
+            return {"message": "No enrollments found"}
+
+        return {"enrollments": response.data}
+    except Exception as e:
+        print("Error:", e)
+        return {"message": "Failed to retrieve enrollments"}
+
+# Route for getting courses by their IDs
+@course_router.post("/get_courses_by_ids")
+def get_courses_by_ids(course_ids: list[int]):
+    print("Course IDs received:", course_ids)
+    try:
+        response = supabase.from_("courses").select("*").in_("id", course_ids).execute()
+
+        if not response.data:
+            return {"message": "No courses found"}
+
+        return {"courses": response.data}
+    except Exception as e:
+        print("Error:", e)
+        return {"message": "Failed to retrieve courses", "error": str(e)}
+
