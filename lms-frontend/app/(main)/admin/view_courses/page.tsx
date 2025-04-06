@@ -6,7 +6,7 @@ import Typography from "@mui/material/Typography";
 import { CircularProgress } from "@mui/joy";
 import axios from "axios";
 import ResponsiveAppBar from "@/app/_components/navbar";
-import CourseCard from "@/app/_components/courseCard";
+import CourseCard from "@/app/_components/courseCardAdmin";
 // import Layout from "../components/layout";
 
 export default function ManagerTeamView() {

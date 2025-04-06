@@ -8,7 +8,7 @@ import { Button, Typography } from '@mui/material';
 import { CircularProgress } from '@mui/joy';
 import Box from '@mui/material/Box';
 import { useRouter } from 'next/navigation';
-import CourseCard from '@/app/_components/courseCard';
+import CourseCard from '@/app/_components/courseCardAdmin';
 import { fetchCurrentUser, fetchUserCourses } from './actions';
 
 interface User {

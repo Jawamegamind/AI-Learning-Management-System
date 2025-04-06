@@ -8,13 +8,26 @@ import Typography from '@mui/joy/Typography';
 import { useRouter } from 'next/navigation';
 // import { useNavigate } from "react-router-dom";
 
-export default function CourseCard({course}) {
+interface Course {
+    id: number;
+    title: string;
+    description: string;
+    // Add other properties of the course object if needed
+}
+
+export default function CourseCard({course}: {course: Course}) {
     const router = useRouter();
-    const redirectToMemberInfo = () => {
-        // Redirect to the member info page
-        // navigate(`/manager-team-info/${user._id}`);
+
+    const redirectToCourseView = () => {
+        // Redirect to the course view page
+        router.push(`/admin/dashboard/${course.id}`);
+    }
+
+    const redirectToEditCourse = () => {
+        // Redirect to the edit course page
         router.push(`/admin/view_courses/${course.id}`);
     }
+
 
     return (
         <Card
@@ -40,8 +53,11 @@ export default function CourseCard({course}) {
             <Typography level="body-md" sx={{ mb: 1 }}>{course.description}</Typography>
         </CardContent>
         <CardActions sx={{ display: 'flex', justifyContent: 'center' }}>
-            <Button variant="outlined" color="neutral" onClick={redirectToMemberInfo}>
+            <Button variant="outlined" color="neutral" onClick={redirectToCourseView}>
                 View Course
+            </Button>
+            <Button variant="outlined" color="neutral" onClick={redirectToEditCourse}>
+                Edit Course
             </Button>
         </CardActions>
         </Card>
