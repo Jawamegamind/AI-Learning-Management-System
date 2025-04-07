@@ -3,7 +3,9 @@
 import {useState, useLayoutEffect} from "react";
 import axios from "axios";
 import { useParams } from "next/navigation";
-import { Box, Typography, Tabs, Tab, Grid2, Paper, List, ListItem, ListItemText, Divider, Button } from "@mui/material";
+import { Box, Typography, Tabs, Tab, Grid2, Paper, List, ListItem, ListItemText, Divider, Button, Link, IconButton } from "@mui/material";
+import { Delete } from "@mui/icons-material";
+import { createClient } from "@/utils/supabase/client";
 import ResponsiveAppBar from "@/app/_components/navbar";
 
 interface Course {
@@ -13,13 +15,36 @@ interface Course {
   // Add other properties of the course object if needed
 }
 
+interface FileItem {
+  name: string;
+  url: string;
+}
+
 export default function CoursePage() {
   const { courseID } = useParams();
   const [tabIndex, setTabIndex] = useState(0);
   const [course, setCourse] = useState<Course | null>(null);
+  const [files, setFiles] = useState<FileItem[]>([]);
+
+  const supabase = createClient();
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabIndex(newValue);
+  };
+
+  const handleDeleteFile = async (fileName: string) => {
+    const { error } = await supabase.storage
+      .from("course-materials")
+      .remove([`${courseID}/${fileName}`]);
+  
+    if (error) {
+      console.error("Failed to delete file:", error.message);
+      alert("Failed to delete file.");
+      return;
+    }
+  
+    // Remove file from local state
+    setFiles((prev) => prev.filter((f) => f.name !== fileName));
   };
 
   useLayoutEffect(() => {
@@ -28,8 +53,37 @@ export default function CoursePage() {
       const response = await axios.get(`http://localhost:8000/api/courses/get_course/${courseID}`);
       setCourse(response.data.course);
     };
+  
+    const fetchFiles = async () => {
+      const { data, error } = await supabase.storage.from("course-materials").list(`${courseID}/`, {
+        limit: 100,
+        offset: 0,
+        sortBy: { column: "name", order: "asc" },
+      });
+  
+      if (error) {
+        console.error("Failed to list files:", error.message);
+        return;
+      }
+  
+      const fileItems: FileItem[] = await Promise.all(
+        (data || []).map(async (item) => {
+          const { data: signedUrlData } = await supabase.storage
+            .from("course-materials")
+            .createSignedUrl(`${courseID}/${item.name}`, 60 * 60); // 1-hour expiry
+  
+          return {
+            name: item.name,
+            url: signedUrlData?.signedUrl ?? "#",
+          };
+        })
+      );
+  
+      setFiles(fileItems);
+    };
 
     fetchCourse();
+    fetchFiles();
   }, [courseID]);
 
   return (
@@ -85,14 +139,61 @@ export default function CoursePage() {
         {tabIndex === 2 && (
           <Box>
             <Typography variant="h6" gutterBottom>Resources</Typography>
+
+            {/* Upload Section */}
+          <Box component="form" sx={{ my: 2 }}>
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx,.ppt,.pptx"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file || !courseID) return;
+
+                const filePath = `${courseID}/${file.name}`;
+
+                const { error } = await supabase.storage
+                  .from("course-materials")
+                  .upload(filePath, file, {
+                    cacheControl: "3600",
+                    upsert: true,
+                  });
+
+                if (error) {
+                  console.error("Upload error:", error.message);
+                  alert("Failed to upload file.");
+                } else {
+                  alert("File uploaded successfully!");
+                }
+              }}
+            />
+          </Box>
+            {/* File List */}
             <List>
-              <ListItem>
-                <ListItemText primary="Lecture 1 Slides" secondary="PDF - Uploaded Mar 29" />
-              </ListItem>
-              <Divider />
-              <ListItem>
-                <ListItemText primary="Course Syllabus" secondary="PDF - Uploaded Mar 28" />
-              </ListItem>
+              {files.map((file, index) => (
+                <Box key={file.name}>
+                  <ListItem
+                    secondaryAction={
+                      <IconButton
+                        edge="end"
+                        aria-label="delete"
+                        onClick={() => handleDeleteFile(file.name)}
+                      >
+                        <Delete/>
+                      </IconButton>
+                    }
+                  >
+                    <ListItemText
+                      primary={
+                        <Link href={file.url} target="_blank" rel="noopener noreferrer" underline="hover">
+                          {file.name}
+                        </Link>
+                      }
+                      secondary="Uploaded file"
+                    />
+                  </ListItem>
+                  {index < files.length - 1 && <Divider />}
+                </Box>
+              ))}
             </List>
           </Box>
         )}
