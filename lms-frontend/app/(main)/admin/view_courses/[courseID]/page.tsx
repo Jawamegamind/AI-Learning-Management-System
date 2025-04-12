@@ -2,7 +2,6 @@
 
 import React, { useLayoutEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import axios from "axios";
 import Box from "@mui/joy/Box";
 import Typography from "@mui/joy/Typography";
 import Card from "@mui/joy/Card";
@@ -14,6 +13,7 @@ import Option from "@mui/joy/Option";
 import { Alert } from '@mui/material';
 import Snackbar, {SnackbarCloseReason} from '@mui/material/Snackbar';
 import ResponsiveAppBar from "@/app/_components/navbar";
+import {fetchCourseDataFromID, fetchUsers, enrollUser, unenrollUser, updateUserRole} from './actions';
 
 interface Course {
     title: string;
@@ -38,7 +38,7 @@ export default function ManageCoursePage() {
     // const router = useRouter();
     const { courseID } = useParams();
     console.log("The courseId is: ", courseID);
-    
+
     const [course, setCourse] = useState<Course | null>(null);
     const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
     const [users, setUsers] = useState<User[]>([]);
@@ -47,7 +47,7 @@ export default function ManageCoursePage() {
     const [open, setOpen] = React.useState(false);
     const [snackbarMessage, setSnackbarMessage] = React.useState('');
     const [snackbarSeverity, setSnackbarSeverity] = React.useState<'success' | 'error' | 'info' | 'warning'>('info');
-    
+
     const handleClick = (message: string, severity: 'success' | 'error' | 'info' | 'warning') => {
         setSnackbarMessage(message);
         setSnackbarSeverity(severity);
@@ -66,57 +66,57 @@ export default function ManageCoursePage() {
 
     const fetchCourseData = async () => {
         try {
-          const response = await axios.get(`http://localhost:8000/api/courses/get_course/${courseID}`);
-          setCourse(response.data.course);
-          setEnrollments(response.data.enrolments);
+          const response = await fetchCourseDataFromID(courseID)
+          setCourse(response.course);
+          setEnrollments(response.enrolments);
         } catch (error) {
           console.error("Error fetching course data", error);
         }
       };
-    
+
 
     useLayoutEffect(() => {
         const fetchData = async () => {
           try {
-            const courseRes = await axios.get(`http://localhost:8000/api/courses/get_course/${courseID}`);
-            const courseData = courseRes.data.course;
-            const enrolmentsData = courseRes.data.enrolments;
-      
+            const courseRes = await fetchCourseDataFromID(courseID)
+            const courseData = courseRes.course;
+            const enrolmentsData = courseRes.enrolments;
+
             setCourse(courseData);
             setEnrollments(enrolmentsData);
-      
-            const usersRes = await axios.get("http://localhost:8000/api/users");
-            console.log("Users API response:", usersRes.data);
+
+            const usersRes = await fetchUsers();
+            console.log("Users API response:", usersRes);
             const enrolledUserIds = new Set(enrolmentsData.map((e: { user_id: string; }) => e.user_id));
             // const availableUsers = usersRes.data.filter((user) => !enrolledUserIds.has(user.id));
-            const availableUsers = usersRes.data.users.filter((user: { id: unknown; }) => !enrolledUserIds.has(user.id));
-      
+            const availableUsers = usersRes.users.filter((user: { id: unknown; }) => !enrolledUserIds.has(user.id));
+            console.log("availableusers",availableUsers)
+
+
             setUsers(availableUsers);
           } catch (error) {
             console.error("Error fetching data", error);
           }
         };
-      
+
         if (courseID) {
           fetchData();
         }
       }, [courseID]);
 
-    
+
 
     const handleAssignUser = async () => {
         try {
-           const response = await axios.post(`http://localhost:8000/api/courses/${courseID}/enroll_user`, {
-            user_id: selectedUser,
-            role: selectedRole,
-          });
-          if (response.data.message === "User already enrolled in this course") {
+          console.log("bef enrolling user",typeof courseID, typeof selectedUser, typeof selectedRole)
+          const resp = await enrollUser(courseID, selectedUser, selectedRole)
+          if (resp === "User already enrolled in this course") {
             handleClick("User already enrolled in this course", "error");
           }
-          else if (response.data.message === "Enrollment failed") {
+          else if (resp === "Enrollment failed") {
             handleClick("Enrollment failed, please try again", "error");
             }
-          else if (response.data.message === "User enrolled successfully") {
+          else if (resp === "User enrolled successfully") {
             handleClick("User enrolled successfully", "success");
         }
           setSelectedUser("");
@@ -126,14 +126,11 @@ export default function ManageCoursePage() {
           console.error("Error assigning user", error);
         }
       };
-    
+
       const handleRoleChange = async (userId: string, newRole: string) => {
         try {
-          const response = await axios.post(`http://localhost:8000/api/courses/${courseID}/update_role`, {
-            user_id: userId,
-            role: newRole,
-          });
-            if (response.data.message === "User role updated successfully") {
+          const resp = await updateUserRole(courseID, userId, newRole)
+            if (resp === "User role updated successfully") {
                 handleClick("User role updated successfully", "success");
             } else {
                 handleClick("Role update failed", "error");
@@ -143,11 +140,11 @@ export default function ManageCoursePage() {
           console.error("Error updating role", error);
         }
       };
-    
+
       const handleRemoveUser = async (userId: string) => {
         try {
-          const response = await axios.delete(`http://localhost:8000/api/courses/${courseID}/unenroll_user/${userId}`);
-            if (response.data.message === "User unenrolled") {
+          const resp = await unenrollUser(courseID, userId)
+            if (resp === "User unenrolled") {
                 handleClick("User unenrolled successfully", "success");
             }
           fetchCourseData();

@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import { CircularProgress } from "@mui/joy";
-import axios from "axios";
 import ResponsiveAppBar from "@/app/_components/navbar";
 import CourseCard from "@/app/_components/courseCardAdmin";
 // import Layout from "../components/layout";
+import { fetchAllCourses } from './actions';
 
 export default function ManagerTeamView() {
     const [courses, setCourses] = useState([]);
@@ -18,12 +18,9 @@ export default function ManagerTeamView() {
         const fetchCourses = async () => {
             try {
                 setLoading(true); // Start loading
-                const response = await axios.get(
-                    `http://localhost:8000/api/courses/get_courses`
-                );
-
-                console.log(response.data); // Log the response
-                setCourses(response.data.courses);
+                console.log("fetching all courses")
+                const courses = await fetchAllCourses();
+                setCourses(courses);
             } catch (error) {
                 console.error("Error during fetching courses:", error);
             } finally {

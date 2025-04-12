@@ -55,7 +55,7 @@ export default function Dashboard() {
                 const courses = await fetchUserCourses(user_id);
                 setStudentCourses(courses.studentCourses);
                 setInstructorCourses(courses.instructorCourses);
-                
+
             }
             setCoursesLoading(false); // End loading
         };
@@ -86,7 +86,7 @@ export default function Dashboard() {
                             <>
                                 {/* Instructor Courses */}
                                 <Typography variant="h6" mt={4}>Courses You Teach</Typography>
-                                {instructorCourses.length > 0 ? (
+                                {instructorCourses && instructorCourses.length > 0 ? (
                                     <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
                                         {instructorCourses.map((course, idx) => (
                                             <CourseCardInstructor key={idx} course={course} />
@@ -98,7 +98,7 @@ export default function Dashboard() {
 
                                 {/* Student Courses */}
                                 <Typography variant="h6" mt={4}>Courses You&apos;re Enrolled In</Typography>
-                                {studentCourses.length > 0 ? (
+                                {studentCourses && studentCourses.length > 0 ? (
                                     <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
                                         {studentCourses.map((course, idx) => (
                                             <CourseCardUser key={idx} course={course} />

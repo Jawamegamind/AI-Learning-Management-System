@@ -14,7 +14,7 @@ export async function fetchCurrentUser(user_id: string) {
 export async function fetchUserCourses(user_id: string) {
     // Send a request to your backend to fetch the user ernollments first
     const response = await axios.get(`http://localhost:8000/api/courses/get_user_enrollments/${user_id}`)
-
+    
     console.log("The user courses reteived from the backend are", response.data.enrollments)
 
     // Now that we have the enrollments use the course_id field in the enrollments to fetch the course details

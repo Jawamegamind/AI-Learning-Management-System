@@ -1,7 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  experimental: {
+    serverActions: {
+      allowedOrigins: [
+        "localhost:3000", // Default dev origin
+        "*.app.github.dev", // Wildcard for Codespaces domains
+      ],
+    },
+  },
 };
 
 export default nextConfig;

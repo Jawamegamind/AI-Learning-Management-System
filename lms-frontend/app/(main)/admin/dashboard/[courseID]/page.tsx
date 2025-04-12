@@ -1,12 +1,13 @@
 "use client";
 
 import {useState, useLayoutEffect} from "react";
-import axios from "axios";
+// import axios from "axios";
 import { useParams } from "next/navigation";
 import { Box, Typography, Tabs, Tab, Grid2, Paper, List, ListItem, ListItemText, Divider, Button, Link, IconButton } from "@mui/material";
 import { Delete } from "@mui/icons-material";
 import { createClient } from "@/utils/supabase/client";
 import ResponsiveAppBar from "@/app/_components/navbar";
+import {fetchCourseDataFromID} from './actions';
 
 interface Course {
   id: number;
@@ -36,13 +37,13 @@ export default function CoursePage() {
     const { error } = await supabase.storage
       .from("course-materials")
       .remove([`${courseID}/${fileName}`]);
-  
+
     if (error) {
       console.error("Failed to delete file:", error.message);
       alert("Failed to delete file.");
       return;
     }
-  
+
     // Remove file from local state
     setFiles((prev) => prev.filter((f) => f.name !== fileName));
   };
@@ -50,35 +51,35 @@ export default function CoursePage() {
   useLayoutEffect(() => {
     const fetchCourse = async () => {
       // Fetching course details from the backend
-      const response = await axios.get(`http://localhost:8000/api/courses/get_course/${courseID}`);
-      setCourse(response.data.course);
+      const course = await fetchCourseDataFromID(courseID)
+      setCourse(course);
     };
-  
+
     const fetchFiles = async () => {
       const { data, error } = await supabase.storage.from("course-materials").list(`${courseID}/`, {
         limit: 100,
         offset: 0,
         sortBy: { column: "name", order: "asc" },
       });
-  
+
       if (error) {
         console.error("Failed to list files:", error.message);
         return;
       }
-  
+
       const fileItems: FileItem[] = await Promise.all(
         (data || []).map(async (item) => {
           const { data: signedUrlData } = await supabase.storage
             .from("course-materials")
             .createSignedUrl(`${courseID}/${item.name}`, 60 * 60); // 1-hour expiry
-  
+
           return {
             name: item.name,
             url: signedUrlData?.signedUrl ?? "#",
           };
         })
       );
-  
+
       setFiles(fileItems);
     };
 
@@ -94,7 +95,7 @@ export default function CoursePage() {
       {/* Course Header */}
       <Box p={4}>
         <Typography variant="h4" gutterBottom>
-          Course Title
+        {course ? course.title : "Course Title..."}
         </Typography>
         <Typography variant="subtitle1" color="text.secondary">
           {course ? course.description : "Loading course description..."}
