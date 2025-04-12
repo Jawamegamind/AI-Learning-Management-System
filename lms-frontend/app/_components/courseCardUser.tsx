@@ -15,12 +15,12 @@ interface Course {
     // Add other properties of the course object if needed
 }
 
-export default function CourseCard({course}: {course: Course}) {
+export default function CourseCardUser({course}: {course: Course}) {
     const router = useRouter();
 
     const redirectToCourseView = () => {
         // Redirect to the course view page
-        router.push(`/user/dashboard/${course.id}`);
+        router.push(`/user/dashboard/student/${course.id}`);
     }
 
     return (

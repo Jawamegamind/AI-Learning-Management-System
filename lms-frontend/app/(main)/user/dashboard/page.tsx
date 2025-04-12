@@ -8,7 +8,8 @@ import { Typography } from '@mui/material';
 import { CircularProgress } from '@mui/joy';
 import Box from '@mui/material/Box';
 // import { useRouter } from 'next/navigation';
-import CourseCard from '@/app/_components/courseCardUser';
+import CourseCardUser from '@/app/_components/courseCardUser';
+import CourseCardInstructor from '@/app/_components/courseCardInstructor';
 import { fetchCurrentUser, fetchUserCourses } from './actions';
 
 interface User {
@@ -88,7 +89,7 @@ export default function Dashboard() {
                                 {instructorCourses.length > 0 ? (
                                     <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
                                         {instructorCourses.map((course, idx) => (
-                                            <CourseCard key={idx} course={course} />
+                                            <CourseCardInstructor key={idx} course={course} />
                                         ))}
                                     </Box>
                                 ) : (
@@ -100,7 +101,7 @@ export default function Dashboard() {
                                 {studentCourses.length > 0 ? (
                                     <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
                                         {studentCourses.map((course, idx) => (
-                                            <CourseCard key={idx} course={course} />
+                                            <CourseCardUser key={idx} course={course} />
                                         ))}
                                     </Box>
                                 ) : (
