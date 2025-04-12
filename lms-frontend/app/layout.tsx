@@ -27,7 +27,7 @@ export default function RootLayout({
     <AppRouterCacheProvider options={{ key: 'css' }}>
       <html lang="en">
         <body className={`${geistSans.variable} ${geistMono.variable}`}
-          data-new-gr-c-s-check-loaded="14.1229.0"
+          data-new-gr-c-s-check-loaded="14.1231.0"
           data-gr-ext-installed="">
             {children}
         </body>

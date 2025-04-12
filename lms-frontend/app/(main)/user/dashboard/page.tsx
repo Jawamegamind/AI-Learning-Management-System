@@ -4,10 +4,10 @@ import * as React from 'react';
 import Navbar from '../../../_components/navbar';
 import { createClient } from '@/utils/supabase/client';
 import {useState, useLayoutEffect} from 'react';
-import { Button, Typography } from '@mui/material';
+import { Typography } from '@mui/material';
 import { CircularProgress } from '@mui/joy';
 import Box from '@mui/material/Box';
-import { useRouter } from 'next/navigation';
+// import { useRouter } from 'next/navigation';
 import CourseCard from '@/app/_components/courseCardUser';
 import { fetchCurrentUser, fetchUserCourses } from './actions';
 
@@ -29,10 +29,11 @@ export default function Dashboard() {
     // const [user, setUser] = useState<any>(null);
     const [userAuth, setUserAuth] = useState<any>(null);
     const [user, setUser] = useState<User>();
-    const [courses, setCourses] = useState<Course[]>([]);
+    const [studentCourses, setStudentCourses] = useState<Course[]>([]);
+    const [instructorCourses, setInstructorCourses] = useState<Course[]>([]);
     const [coursesLoading, setCoursesLoading] = useState(true);
 
-    const router = useRouter();
+    // const router = useRouter();
 
     useLayoutEffect(() => {
         const fetchUser = async () => {
@@ -50,9 +51,10 @@ export default function Dashboard() {
                     setUser(userDetails);
                 }
                 // Now fetch the user courses
-                const userCourses = await fetchUserCourses(user_id);
-                console.log("The user courses are", userCourses);
-                setCourses(userCourses);
+                const courses = await fetchUserCourses(user_id);
+                setStudentCourses(courses.studentCourses);
+                setInstructorCourses(courses.instructorCourses);
+                
             }
             setCoursesLoading(false); // End loading
         };
@@ -60,51 +62,59 @@ export default function Dashboard() {
         fetchUser();
     }, []);
 
-    const handleCreateCourse = () => {
-        router.push("/admin/create_course");
-    };
-
-    const handleViewCourses = () => {
-        router.push("/admin/view_courses");
-    }
-
     // Map courses to CourseCard components
-    const courseEls = courses.map((course, idx) => (
-        <CourseCard key={idx} course={course} />
-    ));
+    // const courseEls = courses.map((course, idx) => (
+    //     <CourseCard key={idx} course={course} />
+    // ));
 
     return (
         <div>
             <Navbar />
-            <h1>This is the User Dashboard of the LMS</h1>
-            {userAuth && user ? (
-                <div>
-                    <h2>Welcome, {user.name}!</h2>
-                    {/* <pre>{JSON.stringify(userAuth, null, 2)}</pre> */}
-                    <Typography>Your Courses</Typography>
-                    <Box sx={{ display: "flex", flexWrap: "wrap" }}>
+            <Box sx={{ p: 4 }}>
+                <Typography variant="h4" gutterBottom>This is the User Dashboard of the LMS</Typography>
+
+                {userAuth && user ? (
+                    <div>
+                        <Typography variant="h5" gutterBottom>Welcome, {user.name}!</Typography>
+
                         {coursesLoading ? (
-                            <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
                                 <CircularProgress />
                             </Box>
-                        ) : courses.length > 0 ? (
-                            courseEls
                         ) : (
-                            <Typography>No courses found.</Typography>
+                            <>
+                                {/* Instructor Courses */}
+                                <Typography variant="h6" mt={4}>Courses You Teach</Typography>
+                                {instructorCourses.length > 0 ? (
+                                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+                                        {instructorCourses.map((course, idx) => (
+                                            <CourseCard key={idx} course={course} />
+                                        ))}
+                                    </Box>
+                                ) : (
+                                    <Typography color="text.secondary">You’re not teaching any courses yet.</Typography>
+                                )}
+
+                                {/* Student Courses */}
+                                <Typography variant="h6" mt={4}>Courses You&apos;re Enrolled In</Typography>
+                                {studentCourses.length > 0 ? (
+                                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+                                        {studentCourses.map((course, idx) => (
+                                            <CourseCard key={idx} course={course} />
+                                        ))}
+                                    </Box>
+                                ) : (
+                                    <Typography color="text.secondary">You&apos;re not enrolled in any courses yet.</Typography>
+                                )}
+                            </>
                         )}
+                    </div>
+                ) : (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+                        <CircularProgress />
                     </Box>
-                    <Button variant="contained" color="primary" onClick={handleCreateCourse} sx={{ mt: 2 }}>
-                        Create New Course
-                    </Button>
-                    <Button variant="contained" color="primary" onClick={handleViewCourses} sx={{ mt: 2 }}>
-                        View All Courses
-                    </Button>
-                </div>
-            ) : (
-                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '2rem' }}>
-                    <CircularProgress />
-                </div>
-            )}
+                )}
+            </Box>
         </div>
     );
 }
