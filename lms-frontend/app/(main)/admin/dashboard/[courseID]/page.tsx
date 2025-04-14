@@ -3,11 +3,11 @@
 import {useState, useLayoutEffect} from "react";
 // import axios from "axios";
 import { useParams } from "next/navigation";
-import { Box, Typography, Tabs, Tab, Grid2, Paper, List, ListItem, ListItemText, Divider, Button, Link, IconButton } from "@mui/material";
+import { Box, Typography, Tabs, Tab, Grid2, Paper, List, ListItem, ListItemText, Divider, Button, Link, IconButton, TextField, FormControlLabel, FormGroup, Checkbox  } from "@mui/material";
 import { Delete } from "@mui/icons-material";
 import { createClient } from "@/utils/supabase/client";
 import ResponsiveAppBar from "@/app/_components/navbar";
-import {fetchCourseDataFromID} from './actions';
+import {fetchCourseDataFromID, generateAssignmentOrQuiz } from './actions';
 
 interface Course {
   id: number;
@@ -26,6 +26,16 @@ export default function CoursePage() {
   const [tabIndex, setTabIndex] = useState(0);
   const [course, setCourse] = useState<Course | null>(null);
   const [files, setFiles] = useState<FileItem[]>([]);
+  const [activeTool, setActiveTool] = useState<null | 'summarize' | 'quiz' | 'assignment'>(null);
+  const [assignmentPrompt, setAssignmentPrompt] = useState("");
+  const [selectedLectures, setSelectedLectures] = useState<string[]>([]);
+  const [assignmentGenerating, setAssignmentGenerating] = useState(false);
+  const [quizPrompt, setQuizPrompt] = useState("");
+  const [quizGenerating, setQuizGenerating] = useState(false);
+  const [selectedQuizLectures, setSelectedQuizLectures] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+
 
   const supabase = createClient();
 
@@ -251,27 +261,206 @@ export default function CoursePage() {
           <Box>
             <Typography variant="h6" gutterBottom>AI Tools</Typography>
             <Grid2 container spacing={2}>
-              <Grid2 size={{ xs:12, sm:6, md:4 }}>
+              <Grid2 xs={12} sm={6} md={4}>
                 <Paper elevation={2} sx={{ p: 2 }}>
                   <Typography variant="subtitle1">Summarize Lecture</Typography>
-                  <Button fullWidth sx={{ mt: 1 }} variant="outlined">Start</Button>
+                  <Button
+                    fullWidth
+                    sx={{ mt: 1 }}
+                    variant="outlined"
+                    disabled={activeTool !== null && activeTool !== 'summarize'}
+                    onClick={() => setActiveTool(activeTool === 'summarize' ? null : 'summarize')}
+                  >
+                    {activeTool === 'summarize' ? "Close" : "Start"}
+                  </Button>
+
+                  {activeTool === 'summarize' && (
+                    <Box mt={2}>
+                      {/* Add summarize lecture input UI here */}
+                      <Typography>Summarizing feature in progress...</Typography>
+                    </Box>
+                  )}
                 </Paper>
               </Grid2>
-              <Grid2 size={{ xs:12, sm:6, md:4 }}>
+
+              <Grid2 xs={12} sm={6} md={4}>
                 <Paper elevation={2} sx={{ p: 2 }}>
                   <Typography variant="subtitle1">Generate Quiz</Typography>
-                  <Button fullWidth sx={{ mt: 1 }} variant="outlined">Start</Button>
+                  <Button
+                    fullWidth
+                    sx={{ mt: 1 }}
+                    variant="outlined"
+                    disabled={activeTool !== null && activeTool !== 'quiz'}
+                    onClick={() => setActiveTool(activeTool === 'quiz' ? null : 'quiz')}
+                  >
+                    {quizGenerating ? "Generating" : activeTool === 'quiz' ? "Close" : "Start"}
+                  </Button>
+
+                  {activeTool === 'quiz' && (
+                    <Box mt={2}>
+                      <TextField
+                        fullWidth
+                        label="Please mention the specific topics or problems you want the quiz to be based on"
+                        value={quizPrompt}
+                        onChange={(e) => setQuizPrompt(e.target.value)}
+                        multiline
+                        rows={3}
+                      />
+                      {error && (
+                        <Typography color="error" mt={1}>
+                          {error}
+                        </Typography>
+                      )}
+
+                      <FormGroup sx={{ mt: 2 }}>
+                        <Typography variant="subtitle2" gutterBottom>Select lectures to include:</Typography>
+                        {files
+                          .filter(f => f.name.startsWith("lectures/"))
+                          .map((file) => (
+                            <FormControlLabel
+                              key={file.name}
+                              control={
+                                <Checkbox
+                                  checked={selectedQuizLectures.includes(file.url)}
+                                  onChange={(e) => {
+                                    const checked = e.target.checked;
+                                    setSelectedQuizLectures(prev =>
+                                      checked
+                                        ? [...prev, file.url]
+                                        : prev.filter(url => url !== file.url)
+                                    );
+                                  }}
+                                />
+                              }
+                              label={file.name.replace("lectures/", "")}
+                            />
+                          ))}
+                      </FormGroup>
+
+                      <Button
+                        sx={{ mt: 2 }}
+                        variant="contained"
+                        onClick={async () => {
+                          if (quizPrompt.trim() === "") {
+                            setError("Please enter a prompt");
+                            return;
+                          }
+
+                          setQuizGenerating(true);
+                          setError(null);
+
+                          try {
+                            const result = await generateAssignmentOrQuiz(quizPrompt, selectedQuizLectures, "quiz");
+                            console.log(result);
+                            alert("Quiz generated successfully.");
+                          } catch (err) {
+                            setError(err.message || "Failed to generate quiz.");
+                            alert("Failed to generate quiz.");
+                          } finally {
+                            setQuizGenerating(false);
+                            setActiveTool(null);
+                            setQuizPrompt("");
+                            setSelectedQuizLectures([]);
+                          }
+                        }}
+                      >
+                        {quizGenerating ? "Generating..." : "Generate"}
+                      </Button>
+                    </Box>
+                  )}
                 </Paper>
               </Grid2>
-              <Grid2 size={{ xs:12, sm:6, md:4 }}>
+
+              <Grid2 xs={12} sm={6} md={4}>
                 <Paper elevation={2} sx={{ p: 2 }}>
                   <Typography variant="subtitle1">Generate Assignment</Typography>
-                  <Button fullWidth sx={{ mt: 1 }} variant="outlined">Start</Button>
+                  <Button
+                    fullWidth
+                    sx={{ mt: 1 }}
+                    variant="outlined"
+                    disabled={activeTool !== null && activeTool !== 'assignment'}
+                    onClick={() => setActiveTool(activeTool === 'assignment' ? null : 'assignment')}
+                  >
+                    {assignmentGenerating ? "Generating" : activeTool === 'assignment' ? "Close" : "Start"}
+                  </Button>
+
+                  {activeTool === 'assignment' && (
+                    <Box mt={2}>
+                      <TextField
+                        fullWidth
+                        label="Please mention the specific topics or problems you want the assignment to be based on"
+                        value={assignmentPrompt}
+                        onChange={(e) => setAssignmentPrompt(e.target.value)}
+                        multiline
+                        rows={3}
+                      />
+                      {error && (
+                        <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                          {error}
+                        </Typography>
+                      )}
+                      <FormGroup sx={{ mt: 2 }}>
+                        <Typography variant="subtitle2" gutterBottom>Select lectures to include as reference material:</Typography>
+                        {files
+                          .filter(f => f.name.startsWith("lectures/"))
+                          .map((file) => (
+                            <FormControlLabel
+                              key={file.name}
+                              control={
+                                <Checkbox
+                                  checked={selectedLectures.includes(file.url)}
+                                  onChange={(e) => {
+                                    const checked = e.target.checked;
+                                    setSelectedLectures(prev =>
+                                      checked
+                                        ? [...prev, file.url]
+                                        : prev.filter(url => url !== file.url)
+                                    );
+                                  }}
+                                />
+                              }
+                              label={file.name.replace("lectures/", "")}
+                            />
+                          ))}
+                      </FormGroup>
+
+                      <Button
+                        sx={{ mt: 2 }}
+                        variant="contained"
+                        onClick={async () => {
+                          if (!assignmentPrompt.trim()) {
+                            setError("Please enter a prompt");
+                            return;
+                          }
+
+                          setAssignmentGenerating(true);
+                          setError(null);
+
+                          try {
+                              const result = await generateAssignmentOrQuiz(assignmentPrompt, selectedLectures, "assignment");
+                              console.log(result)
+                              alert("Assignment generated successfully.");
+                          } catch (error) {
+                              setError(err.message || 'Failed to generate assignment');
+                              alert("Failed to generate assignment.");
+                          } finally {
+                              setAssignmentGenerating(false);
+                              setActiveTool(null);
+                              setAssignmentPrompt("");
+                              setSelectedLectures([]);
+                          }
+                        }}
+                      >
+                        {assignmentGenerating ? "Generating..." : "Generate"}
+                      </Button>
+                    </Box>
+                  )}
                 </Paper>
               </Grid2>
             </Grid2>
           </Box>
         )}
+
       </Box>
     </Box>
   );
