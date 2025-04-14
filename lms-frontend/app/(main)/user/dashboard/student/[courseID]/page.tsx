@@ -24,7 +24,16 @@ export default function CoursePage() {
   const { courseID } = useParams();
     const [tabIndex, setTabIndex] = useState(0);
     const [course, setCourse] = useState<Course | null>(null);
-    const [files, setFiles] = useState<FileItem[]>([]);
+    const [files, setFiles] = useState<{
+      assignments: FileItem[];
+      quizzes: FileItem[];
+      lectures: FileItem[];
+    }>({
+      assignments: [],
+      quizzes: [],
+      lectures: [],
+    });
+
 
     const supabase = createClient();
 
@@ -41,32 +50,45 @@ export default function CoursePage() {
       };
 
       const fetchFiles = async () => {
-        const { data, error } = await supabase.storage.from("course-materials").list(`${courseID}/`, {
-          limit: 100,
-          offset: 0,
-          sortBy: { column: "name", order: "asc" },
-        });
+        const folders: Array<keyof typeof files> = ["assignments", "quizzes", "lectures"];
+        const result: typeof files = {
+          assignments: [],
+          quizzes: [],
+          lectures: [],
+        };
 
-        if (error) {
-          console.error("Failed to list files:", error.message);
-          return;
+        for (const folder of folders) {
+          const { data, error } = await supabase.storage.from("course-materials").list(`${courseID}/${folder}/`, {
+            limit: 100,
+            offset: 0,
+            sortBy: { column: "name", order: "asc" },
+          });
+
+          if (error) {
+            console.error(`Error fetching ${folder}:`, error.message);
+            continue;
+          }
+
+          const items: FileItem[] = await Promise.all(
+            (data || []).map(async (item) => {
+              const fullPath = `${courseID}/${folder}/${item.name}`;
+              const { data: signedUrlData, error: urlError } = await supabase.storage
+                .from("course-materials")
+                .createSignedUrl(fullPath, 60 * 60);
+
+              return {
+                name: item.name,
+                url: signedUrlData?.signedUrl ?? "#",
+              };
+            })
+          );
+
+          result[folder] = items;
         }
 
-        const fileItems: FileItem[] = await Promise.all(
-          (data || []).map(async (item) => {
-            const { data: signedUrlData } = await supabase.storage
-              .from("course-materials")
-              .createSignedUrl(`${courseID}/${item.name}`, 60 * 60); // 1-hour expiry
-
-            return {
-              name: item.name,
-              url: signedUrlData?.signedUrl ?? "#",
-            };
-          })
-        );
-
-        setFiles(fileItems);
+        setFiles(result);
       };
+
 
       fetchCourse();
       fetchFiles();
@@ -125,26 +147,39 @@ export default function CoursePage() {
         {tabIndex === 2 && (
           <Box>
             <Typography variant="h6" gutterBottom>Resources</Typography>
-            {/* File List */}
-            <List>
-              {files.map((file, index) => (
-                <Box key={file.name}>
-                  <ListItem>
-                    <ListItemText
-                      primary={
-                        <Link href={file.url} target="_blank" rel="noopener noreferrer" underline="hover">
-                          {file.name}
-                        </Link>
-                      }
-                      secondary="Uploaded file"
-                    />
-                  </ListItem>
-                  {index < files.length - 1 && <Divider />}
-                </Box>
-              ))}
-            </List>
+
+            {["lectures", "assignments", "quizzes"].map((section) => (
+              <Box key={section} mt={3}>
+                <Typography variant="subtitle1" gutterBottom sx={{ textTransform: "capitalize" }}>
+                  {section}
+                </Typography>
+                <List>
+                  {files[section as keyof typeof files].length === 0 && (
+                    <ListItem>
+                      <ListItemText primary="No files available." />
+                    </ListItem>
+                  )}
+                  {files[section as keyof typeof files].map((file) => (
+                    <Box key={file.name}>
+                      <ListItem>
+                        <ListItemText
+                          primary={
+                            <Link href={file.url} target="_blank" rel="noopener noreferrer" underline="hover">
+                              {file.name}
+                            </Link>
+                          }
+                          secondary="Downloadable file"
+                        />
+                      </ListItem>
+                      <Divider />
+                    </Box>
+                  ))}
+                </List>
+              </Box>
+            ))}
           </Box>
         )}
+
 
         {tabIndex === 3 && (
           <Box>

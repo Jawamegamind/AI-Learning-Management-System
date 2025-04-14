@@ -27,6 +27,7 @@ export default function CoursePage() {
   const [course, setCourse] = useState<Course | null>(null);
   const [files, setFiles] = useState<FileItem[]>([]);
 
+
   const supabase = createClient();
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -49,32 +50,47 @@ export default function CoursePage() {
   };
 
   const fetchFiles = async () => {
-    const { data, error } = await supabase.storage.from("course-materials").list(`${courseID}/`, {
-      limit: 100,
-      offset: 0,
-      sortBy: { column: "name", order: "asc" },
-    });
+    const folders = ["assignments", "quizzes", "lectures"];
+    const allFiles: FileItem[] = [];
 
-    if (error) {
-      console.error("Failed to list files:", error.message);
-      return;
+    for (const folder of folders) {
+      const { data, error } = await supabase.storage.from("course-materials").list(`${courseID}/${folder}/`, {
+        limit: 100,
+        offset: 0,
+        sortBy: { column: "name", order: "asc" },
+      });
+
+      if (error) {
+        console.error(`Failed to list files in ${folder}:`, error.message);
+        continue;
+      }
+
+      const fileItems: FileItem[] = await Promise.all(
+        (data || []).map(async (item) => {
+          const filePath = `${courseID}/${folder}/${item.name}`;
+
+          const { data: signedUrlData, error: urlError } = await supabase.storage
+            .from("course-materials")
+            .createSignedUrl(filePath, 60 * 60); // 1-hour expiry
+
+          if (urlError) {
+            console.error(`Failed to create signed URL for ${filePath}:`, urlError.message);
+          }
+
+          return {
+            name: `${folder}/${item.name}`, // include folder path
+            url: signedUrlData?.signedUrl ?? "#",
+          };
+        })
+      );
+
+      allFiles.push(...fileItems);
     }
 
-    const fileItems: FileItem[] = await Promise.all(
-      (data || []).map(async (item) => {
-        const { data: signedUrlData } = await supabase.storage
-          .from("course-materials")
-          .createSignedUrl(`${courseID}/${item.name}`, 60 * 60); // 1-hour expiry
-
-        return {
-          name: item.name,
-          url: signedUrlData?.signedUrl ?? "#",
-        };
-      })
-    );
-
-    setFiles(fileItems);
+    setFiles(allFiles);
   };
+
+
 
   useLayoutEffect(() => {
     const fetchCourse = async () => {
@@ -88,6 +104,44 @@ export default function CoursePage() {
     fetchCourse();
     fetchFiles();
   }, [courseID]);
+
+  const renderFileTree = (node: any, pathPrefix = "") => {
+    return Object.entries(node).map(([key, value]) => {
+      if (value.type === "folder") {
+        return (
+          <Box key={key} sx={{ ml: 2, mt: 1 }}>
+            <Typography variant="subtitle2">📁 {value.name}</Typography>
+            <List dense>{renderFileTree(value.children, `${pathPrefix}${value.name}/`)}</List>
+          </Box>
+        );
+      } else {
+        return (
+          <ListItem
+            key={key}
+            secondaryAction={
+              <IconButton
+                edge="end"
+                aria-label="delete"
+                onClick={() => handleDeleteFile(`${courseID}/${pathPrefix}${value.name}`)}
+              >
+                <Delete />
+              </IconButton>
+            }
+          >
+            <ListItemText
+              primary={
+                <Link href={value.url} target="_blank" rel="noopener noreferrer" underline="hover">
+                  {value.name}
+                </Link>
+              }
+              secondary="Uploaded file"
+            />
+          </ListItem>
+        );
+      }
+    });
+  };
+
 
   return (
     <Box>
@@ -139,68 +193,86 @@ export default function CoursePage() {
           </Box>
         )}
 
-        {tabIndex === 2 && (
+{tabIndex === 2 && (
           <Box>
             <Typography variant="h6" gutterBottom>Resources</Typography>
 
-            {/* Upload Section */}
-          <Box component="form" sx={{ my: 2 }}>
-            <input
-              type="file"
-              accept=".pdf,.doc,.docx,.ppt,.pptx"
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file || !courseID) return;
+            {["assignments", "quizzes", "lectures"].map((folder) => (
+              <Box key={folder} mb={4}>
+                <Typography variant="subtitle1" gutterBottom sx={{ textTransform: "capitalize" }}>
+                  {folder}
+                </Typography>
 
-                const filePath = `${courseID}/${file.name}`;
+                {/* Upload Section */}
+                <Box component="form" sx={{ my: 2 }}>
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.ppt,.pptx"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file || !courseID) return;
 
-                const { error } = await supabase.storage
-                  .from("course-materials")
-                  .upload(filePath, file, {
-                    cacheControl: "3600",
-                    upsert: true,
-                  });
+                      const filePath = `${courseID}/${folder}/${file.name}`;
 
-                if (error) {
-                  console.error("Upload error:", error.message);
-                  alert("Failed to upload file.");
-                } else {
-                  alert("File uploaded successfully!");
-                  fetchFiles(); // Refresh the file list after upload
-                }
-              }}
-            />
-          </Box>
-            {/* File List */}
-            <List>
-              {files.map((file, index) => (
-                <Box key={file.name}>
-                  <ListItem
-                    secondaryAction={
-                      <IconButton
-                        edge="end"
-                        aria-label="delete"
-                        onClick={() => handleDeleteFile(file.name)}
-                      >
-                        <Delete/>
-                      </IconButton>
-                    }
-                  >
-                    <ListItemText
-                      primary={
-                        <Link href={file.url} target="_blank" rel="noopener noreferrer" underline="hover">
-                          {file.name}
-                        </Link>
+                      const { error } = await supabase.storage
+                        .from("course-materials")
+                        .upload(filePath, file, {
+                          cacheControl: "3600",
+                          upsert: true,
+                        });
+
+                      if (error) {
+                        console.error("Upload error:", error.message);
+                        alert(`Failed to upload file to ${folder}.`);
+                      } else {
+                        alert(`File uploaded to ${folder} successfully!`);
+                        // Refresh files for this folder
+                        const { data: signedUrlData } = await supabase.storage
+                          .from("course-materials")
+                          .createSignedUrl(filePath, 60 * 60);
+
+                        setFiles((prev) => [...prev, { name: `${folder}/${file.name}`, url: signedUrlData?.signedUrl ?? "#" }]);
                       }
-                      secondary="Uploaded file"
-                    />
-                  </ListItem>
-                  {index < files.length - 1 && <Divider />}
+                    }}
+                  />
                 </Box>
-              ))}
-            </List>
+
+                {/* File List */}
+                <List>
+                  {files.filter((f) => f.name.startsWith(`${folder}/`)).map((file, index, arr) => {
+                    const fileName = file.name.replace(`${folder}/`, "");
+                    return (
+                      <Box key={file.name}>
+                        <ListItem
+                          secondaryAction={
+                            <IconButton
+                              edge="end"
+                              aria-label="delete"
+                              onClick={() => handleDeleteFile(file.name)}
+                            >
+                              <Delete/>
+                            </IconButton>
+                          }
+                        >
+                          <ListItemText
+                            primary={
+                              <Link href={file.url} target="_blank" rel="noopener noreferrer" underline="hover">
+                                {fileName}
+                              </Link>
+                            }
+                            secondary={`Uploaded to ${folder}`}
+                          />
+                        </ListItem>
+                        {index < arr.length - 1 && <Divider />}
+                      </Box>
+                    );
+                  })}
+                </List>
+              </Box>
+            ))}
           </Box>
         )}
+
 
         {tabIndex === 3 && (
           <Box>
