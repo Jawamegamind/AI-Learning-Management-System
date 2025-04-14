@@ -305,6 +305,12 @@ export default function CoursePage() {
                   <Button fullWidth sx={{ mt: 1 }} variant="outlined">Start</Button>
                 </Paper>
               </Grid2>
+              <Grid2 size={{ xs:12, sm:6, md:4 }}>
+                <Paper elevation={2} sx={{ p: 2 }}>
+                  <Typography variant="subtitle1">Generate Assignment</Typography>
+                  <Button fullWidth sx={{ mt: 1 }} variant="outlined">Start</Button>
+                </Paper>
+              </Grid2>
             </Grid2>
           </Box>
         )}
