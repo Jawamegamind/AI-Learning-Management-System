@@ -97,7 +97,8 @@ export default function CoursePage() {
       // Fetching course details from the backend
       // const response = await axios.get(`http://localhost:8000/api/courses/get_course/${courseID}`);
       // setCourse(response.data.course);
-      const course = await fetchCourseDataFromID(courseID)
+      if (!courseID) return;
+      const course = await fetchCourseDataFromID(courseID.toString());
       setCourse(course);
     };
 

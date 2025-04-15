@@ -61,7 +61,8 @@ export default function CoursePage() {
   useLayoutEffect(() => {
     const fetchCourse = async () => {
       // Fetching course details from the backend
-      const course = await fetchCourseDataFromID(courseID)
+      if (!courseID) return;
+      const course = await fetchCourseDataFromID(courseID.toString());
       setCourse(course);
     };
 
@@ -261,7 +262,7 @@ export default function CoursePage() {
           <Box>
             <Typography variant="h6" gutterBottom>AI Tools</Typography>
             <Grid2 container spacing={2}>
-              <Grid2 xs={12} sm={6} md={4}>
+              <Grid2 size={{xs:12, sm:6, md:4}}>
                 <Paper elevation={2} sx={{ p: 2 }}>
                   <Typography variant="subtitle1">Summarize Lecture</Typography>
                   <Button
@@ -283,7 +284,7 @@ export default function CoursePage() {
                 </Paper>
               </Grid2>
 
-              <Grid2 xs={12} sm={6} md={4}>
+              <Grid2 size={{xs:12, sm:6, md:4}}>
                 <Paper elevation={2} sx={{ p: 2 }}>
                   <Typography variant="subtitle1">Generate Quiz</Typography>
                   <Button
@@ -371,7 +372,7 @@ export default function CoursePage() {
                 </Paper>
               </Grid2>
 
-              <Grid2 xs={12} sm={6} md={4}>
+              <Grid2 size={{xs:12, sm:6, md:4}}>
                 <Paper elevation={2} sx={{ p: 2 }}>
                   <Typography variant="subtitle1">Generate Assignment</Typography>
                   <Button
