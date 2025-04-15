@@ -54,14 +54,7 @@ export default function SignIn() {
 
         // Using the login action
         try {
-            const response = await login(formData);
-            
-            // Checking the response message and displaying appropriate alerts
-            if (response == "Invalid credentials") {
-                handleClick("Invalid credentials", "error");
-            } else if (response == "Login failed") {
-                handleClick("Login failed", "error");
-            }
+            await login(formData);
         } catch (error) {
             console.error('Error:', error);
             handleClick("Login failed", "error");
