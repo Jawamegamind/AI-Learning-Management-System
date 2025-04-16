@@ -1,13 +1,12 @@
 "use client";
 
 import {useState, useLayoutEffect} from "react";
-// import axios from "axios";
 import { useParams } from "next/navigation";
 import { Box, Typography, Tabs, Tab, Grid2, Paper, List, ListItem, ListItemText, Divider, Button, Link, IconButton } from "@mui/material";
 import { Delete } from "@mui/icons-material";
 import { createClient } from "@/utils/supabase/client";
 import ResponsiveAppBar from "@/app/_components/navbar";
-import {fetchCourseDataFromID} from './actions';
+import {fetchCourseDataFromID, generateFileEmbeddingsonUpload} from './actions';
 
 interface Course {
   id: number;
@@ -19,6 +18,13 @@ interface Course {
 interface FileItem {
   name: string;
   url: string;
+}
+
+interface FileTreeNode {
+  type: 'folder' | 'file';
+  name: string;
+  url?: string;
+  children?: Record<string, FileTreeNode>;
 }
 
 export default function CoursePage() {
@@ -106,13 +112,13 @@ export default function CoursePage() {
     fetchFiles();
   }, [courseID]);
 
-  const renderFileTree = (node: any, pathPrefix = "") => {
+  const renderFileTree = (node: Record<string, FileTreeNode>, pathPrefix = "") => {
     return Object.entries(node).map(([key, value]) => {
       if (value.type === "folder") {
         return (
           <Box key={key} sx={{ ml: 2, mt: 1 }}>
             <Typography variant="subtitle2">📁 {value.name}</Typography>
-            <List dense>{renderFileTree(value.children, `${pathPrefix}${value.name}/`)}</List>
+            <List dense>{renderFileTree(value.children || {}, `${pathPrefix}${value.name}/`)}</List>
           </Box>
         );
       } else {
@@ -225,14 +231,47 @@ export default function CoursePage() {
                       if (error) {
                         console.error("Upload error:", error.message);
                         alert(`Failed to upload file to ${folder}.`);
-                      } else {
-                        alert(`File uploaded to ${folder} successfully!`);
-                        // Refresh files for this folder
-                        const { data: signedUrlData } = await supabase.storage
+                        return;
+                      }
+
+                      const { data: signedUrlData, error: urlError } = await supabase.storage
                           .from("course-materials")
                           .createSignedUrl(filePath, 60 * 60);
 
-                        setFiles((prev) => [...prev, { name: `${folder}/${file.name}`, url: signedUrlData?.signedUrl ?? "#" }]);
+                      if (urlError) {
+                        console.error(`Failed to create signed URL for ${filePath}:`, urlError.message);
+                        alert(`Failed to create signed URL for ${filePath}.`);
+                        return;
+                      }
+
+                      try {
+                        var parts = filePath.split("/")
+                        const file_name = parts[2]
+                        const temp = file_name.split(".");
+                        const fileExt = temp.length > 1 ? `.${temp[temp.length - 1].toLowerCase()}` : '';
+                        const allowed_types = ['.pdf', '.txt', '.docx', '.md']
+                        if (!fileExt || !allowed_types.includes(fileExt)) {
+                          alert(`File type not allowed. Allowed types are: ${allowed_types.join(', ')}`);
+                          return;
+                        }
+                        const { data: signedUrlData, error: urlError } = await supabase.storage.from("course-materials").createSignedUrl(filePath, 60);
+                        // console.log(signedUrlData, urlError)
+                        if (urlError){
+                          console.error("signed URL creation error:", error);
+                          alert(`File uploaded, but signed url creation failed: ${error}`)
+                          return
+                        }
+                        const result = await generateFileEmbeddingsonUpload(courseID, filePath, signedUrlData.signedUrl);
+                        console.log("File processed successfully:", result);
+
+                        alert(`File uploaded to ${folder} and processed successfully!`);
+                        setFiles((prev) => [
+                          ...prev,
+                          { name: `${folder}/${file.name}`, url: signedUrlData.signedUrl },
+                        ]);
+                      } catch (error) {
+                        console.error("Backend processing error:", error);
+                        alert(`File uploaded, but processing failed: ${error}`);
                       }
                     }}
                   />

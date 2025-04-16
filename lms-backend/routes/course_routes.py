@@ -1,11 +1,16 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, UploadFile, File, HTTPException, Query
 from database.supabase_db import create_supabase_client
 from datetime import datetime, timezone
 from models.course_model import Course, CourseCreate, CourseEnrollment
 from models.user_model import User
+from utils.storage_manager import StorageManager
+import os
+from typing import Optional
+import requests
 
 course_router = APIRouter()
 supabase = create_supabase_client()
+storage_manager = StorageManager(os.getenv("PROJECT_URL"),os.getenv("API_KEY"))
 
 # Rouyte to create a new course
 @course_router.post("/create_course")
@@ -170,3 +175,55 @@ def get_courses_by_ids(course_ids: list[int]):
         print("Error:", e)
         return {"message": "Failed to retrieve courses", "error": str(e)}
 
+@course_router.post("/process_file")
+async def process_course_file(
+    courseId: str = Query(...),
+    filePath: str = Query(...),
+    signedUrl: str = Query(...)
+):
+    print("courseID:", courseId,"filePath:", filePath)
+    # print("signedUrl:", signedUrl)
+    signed_url = signedUrl
+    try:
+        # Extract folder and filename from filePath
+        parts = filePath.split('/')
+        course_id = int(courseId)
+        folder = parts[1]
+        filename = parts[2]
+
+        try:
+            # Download the file using the signed URL
+            response = requests.get(signed_url)
+            response.raise_for_status()
+            file_data = response.content
+            # print("got cont", file_data)
+
+            # Create a temporary file to store the download
+            temp_file_path = f"temp_{filename}"
+            with open(temp_file_path, "wb") as buffer:
+                buffer.write(file_data)
+            print("wrote temp files locally ", temp_file_path)
+
+            # Process the file using StorageManager
+            result = storage_manager.process_file(
+                file_path=temp_file_path,
+                course_id=course_id,
+                originalFilePath= filePath,
+                folder= folder
+            )
+            # print("processed file w storage manager")
+            return {
+                "message": "File uploaded and processed successfully",
+                "embedding_info": result
+            }
+
+        finally:
+            # Clean up temporary file
+            if os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process file: {str(e)}"
+        )
