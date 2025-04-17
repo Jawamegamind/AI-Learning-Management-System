@@ -2,11 +2,11 @@
 
 import {useState, useLayoutEffect} from "react";
 import { useParams } from "next/navigation";
-import { Box, Typography, Tabs, Tab, Grid2, Paper, List, ListItem, ListItemText, Divider, Button, Link, IconButton } from "@mui/material";
+import { Box, Typography, Tabs, Tab, Grid2, Paper, List, ListItem, ListItemText, Divider, Button, Link, IconButton, FormGroup, FormControlLabel, Checkbox, TextField } from "@mui/material";
 import { Delete } from "@mui/icons-material";
 import { createClient } from "@/utils/supabase/client";
 import ResponsiveAppBar from "@/app/_components/navbar";
-import {fetchCourseDataFromID, generateFileEmbeddingsonUpload} from './actions';
+import {fetchCourseDataFromID, generateFileEmbeddingsonUpload, generateAssignmentOrQuiz, summarizeLecture} from './actions';
 
 interface Course {
   id: number;
@@ -32,12 +32,54 @@ export default function CoursePage() {
   const [tabIndex, setTabIndex] = useState(0);
   const [course, setCourse] = useState<Course | null>(null);
   const [files, setFiles] = useState<FileItem[]>([]);
-
+  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [showFileSelector, setShowFileSelector] = useState(false);
+  const [activeTool, setActiveTool] = useState<'quiz' | 'assignment' | null>(null);
+  const [prompt, setPrompt] = useState<string>('');
 
   const supabase = createClient();
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabIndex(newValue);
+  };
+
+  const handleFileSelection = (fileUrl: string) => {
+    setSelectedFiles(prev => {
+      if (prev.includes(fileUrl)) {
+        return prev.filter(url => url !== fileUrl);
+      } else {
+        return [...prev, fileUrl];
+      }
+    });
+  };
+
+  const handleGenerateContent = async (type: 'quiz' | 'assignment') => {
+    if (selectedFiles.length === 0) {
+      alert('Please select at least one file');
+      return;
+    }
+
+    if (!prompt.trim()) {
+      alert('Please enter a prompt');
+      return;
+    }
+
+    try {
+      const result = await generateAssignmentOrQuiz(
+        prompt,
+        selectedFiles as string[],
+        type
+      );
+      console.log(`${type.charAt(0).toUpperCase() + type.slice(1)}:`, result);
+      // TODO: Display the result in a modal or new section
+      setShowFileSelector(false);
+      setActiveTool(null);
+      setSelectedFiles([]);
+      setPrompt('');
+    } catch (error) {
+      console.error(`${type} generation error:`, error);
+      alert(`Failed to generate ${type}`);
+    }
   };
 
   const handleDeleteFile = async (fileName: string) => {
@@ -366,25 +408,123 @@ export default function CoursePage() {
           <Box>
             <Typography variant="h6" gutterBottom>AI Tools</Typography>
             <Grid2 container spacing={2}>
-              <Grid2 size={{ xs:12, sm:6, md:4 }}>
+              <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
                 <Paper elevation={2} sx={{ p: 2 }}>
                   <Typography variant="subtitle1">Summarize Lecture</Typography>
-                  <Button fullWidth sx={{ mt: 1 }} variant="outlined">Start</Button>
+                  <Button 
+                    fullWidth 
+                    sx={{ mt: 1 }} 
+                    variant="outlined"
+                    onClick={async () => {
+                      try {
+                        // Get the first lecture URL from the files list
+                        const lectureFile = files.find(f => f.name.startsWith('lectures/'));
+                        if (!lectureFile) {
+                          alert('No lecture files found');
+                          return;
+                        }
+                        const result = await summarizeLecture(lectureFile.url);
+                        // TODO: Display the summary in a modal or new section
+                        console.log('Summary:', result);
+                      } catch (error) {
+                        console.error('Summarization error:', error);
+                        alert('Failed to generate summary');
+                      }
+                    }}
+                  >
+                    Start
+                  </Button>
                 </Paper>
               </Grid2>
-              <Grid2 size={{ xs:12, sm:6, md:4 }}>
+              <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
                 <Paper elevation={2} sx={{ p: 2 }}>
                   <Typography variant="subtitle1">Generate Quiz</Typography>
-                  <Button fullWidth sx={{ mt: 1 }} variant="outlined">Start</Button>
+                  <Button 
+                    fullWidth 
+                    sx={{ mt: 1 }} 
+                    variant="outlined"
+                    onClick={() => {
+                      setActiveTool('quiz');
+                      setShowFileSelector(true);
+                    }}
+                  >
+                    Start
+                  </Button>
                 </Paper>
               </Grid2>
-              <Grid2 size={{ xs:12, sm:6, md:4 }}>
+              <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
                 <Paper elevation={2} sx={{ p: 2 }}>
                   <Typography variant="subtitle1">Generate Assignment</Typography>
-                  <Button fullWidth sx={{ mt: 1 }} variant="outlined">Start</Button>
+                  <Button 
+                    fullWidth 
+                    sx={{ mt: 1 }} 
+                    variant="outlined"
+                    onClick={() => {
+                      setActiveTool('assignment');
+                      setShowFileSelector(true);
+                    }}
+                  >
+                    Start
+                  </Button>
                 </Paper>
               </Grid2>
             </Grid2>
+
+            {showFileSelector && (
+              <Paper elevation={3} sx={{ p: 3, mt: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  Select files for {activeTool === 'quiz' ? 'quiz' : 'assignment'} generation
+                </Typography>
+                <FormGroup>
+                  {files.map((file) => (
+                    <FormControlLabel
+                      key={file.name}
+                      control={
+                        <Checkbox 
+                          checked={selectedFiles.includes(file.url)}
+                          onChange={() => handleFileSelection(file.url)}
+                        />
+                      }
+                      label={file.name}
+                    />
+                  ))}
+                </FormGroup>
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Enter your prompt:
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={3}
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder={`Enter instructions for generating a ${activeTool}...`}
+                    sx={{ mb: 2 }}
+                  />
+                </Box>
+                <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
+                  <Button 
+                    variant="contained" 
+                    onClick={() => handleGenerateContent(activeTool as 'quiz' | 'assignment')}
+                    disabled={selectedFiles.length === 0 || !prompt.trim()}
+                  >
+                    Generate
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    onClick={() => {
+                      setShowFileSelector(false);
+                      setActiveTool(null);
+                      setSelectedFiles([]);
+                      setPrompt('');
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </Box>
+              </Paper>
+            )}
           </Box>
         )}
       </Box>

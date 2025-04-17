@@ -6,6 +6,7 @@ from models.user_model import User
 from models.login_model import LoginRequestModel
 from routes.auth_routes import auth_router
 from routes.course_routes import course_router
+from routes.generation_routes import generation_router
 
 app = FastAPI()
 
@@ -23,6 +24,8 @@ app.add_middleware(
 # Setting up the imported routers
 app.include_router(auth_router, prefix="/api")
 app.include_router(course_router, prefix="/api/courses")
+app.include_router(generation_router, prefix="/api/generation")
+
 
 @app.get("/")
 def read_root():
