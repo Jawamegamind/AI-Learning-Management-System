@@ -44,18 +44,51 @@ export default function CoursePage() {
   };
 
   const handleDeleteFile = async (fileName: string) => {
-    const { error } = await supabase.storage
-      .from("course-materials")
-      .remove([`${courseID}/${fileName}`]);
+    try {
+      // Construct the file path as stored in storage
+      const storageFilePath = `${courseID}/${fileName}`; // e.g., "CS101/lecture.pdf"
 
-    if (error) {
-      console.error("Failed to delete file:", error.message);
-      alert("Failed to delete file.");
-      return;
+      // Delete file from Supabase storage
+      const { error: storageError } = await supabase.storage
+        .from('course-materials')
+        .remove([storageFilePath]);
+
+      if (storageError) {
+        console.error('Failed to delete file from storage:', storageError.message);
+        alert('Failed to delete file from storage.');
+        return;
+      }
+
+      // Construct file_path for document_embed (adjust based on your format)
+      const embedFilePath = storageFilePath
+
+      // Call delete_embeddings_by_path via RPC
+      const { data, error: rpcError } = await supabase
+        .rpc('delete_embeddings_by_path', { file_path_param: embedFilePath })
+        .single();
+
+      if (rpcError || !data) {
+        console.error('Failed to delete embeddings:', rpcError?.message || 'No data returned');
+        alert('Failed to delete embeddings from database.');
+        return;
+      }
+
+      // Check RPC response
+      if (data.status !== 'success') {
+        console.error('Embedding deletion failed:', data.message);
+        alert(`Failed to delete embeddings: ${data.message}`);
+        return;
+      }
+
+      console.log('Successfully deleted file and embeddings:', data.message);
+
+      // Update local state
+      setFiles((prev) => prev.filter((f) => f.name !== fileName));
+
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      alert('An unexpected error occurred.');
     }
-
-    // Remove file from local state
-    setFiles((prev) => prev.filter((f) => f.name !== fileName));
   };
 
   useLayoutEffect(() => {
