@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from database.retriever import Retriever
 from typing import List, Optional
 import numpy as np
@@ -7,6 +7,11 @@ import os
 from models.assignment_generation_model import generate_assignment_workflow
 from pydantic import BaseModel
 from typing import List
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 generation_router = APIRouter()
 retriever = Retriever()
@@ -19,6 +24,9 @@ class AssignmentRequest(BaseModel):
 class QuizRequest(BaseModel):
     prompt: str
     lecture_urls: List[str]
+
+class SummarizeRequest(BaseModel):
+    lecture_url: str
 
 @generation_router.post("/generate-assignment")
 async def generate_assignment(request: AssignmentRequest):
@@ -74,33 +82,66 @@ async def generate_quiz(request: QuizRequest):
             detail=f"Failed to generate quiz: {str(e)}"
         )
 
+
 @generation_router.post("/summarize-lecture")
-async def summarize_lecture(lecture_url: str):
+async def summarize_lecture(request: SummarizeRequest):
     """
     Generate a summary of a lecture based on its content.
     """
     try:
+        logger.info(f"Received request to summarize lecture with URL: {request.lecture_url}")
+
         # Get document ID for the lecture URL
-        doc_ids = retriever.get_document_ids_by_urls([lecture_url])
-        
+        logger.info("Fetching document IDs for URL")
+        doc_ids = retriever.get_document_ids_by_urls([request.lecture_url])
+        logger.info(f"Retrieved document IDs: {doc_ids}")
+
         if not doc_ids:
+            logger.warning(f"No document IDs found for URL: {request.lecture_url}")
             raise HTTPException(
                 status_code=404,
                 detail="Lecture not found"
             )
-        
+
         # Get all chunks for this document
+        logger.info(f"Performing filtered search for doc_ids: {doc_ids}")
         chunks = retriever.filtered_search(
             query_embedding=[0] * 768,  # Dummy embedding since we want all chunks
             relevant_doc_ids=doc_ids,
             limit_rows=100  # Get all chunks
         )
-        
+        logger.info(f"Retrieved {len(chunks)} chunks")
+
+        # Validate chunk format
+        if not chunks:
+            logger.warning("No chunks retrieved for the document")
+            raise HTTPException(
+                status_code=404,
+                detail="No content found for the lecture"
+            )
+
         # Extract content from chunks
-        content = "\n".join([chunk[1] for chunk in chunks])
-        
-        # TODO: Add your LLM call here to generate the summary
-        # For now, return a placeholder response
+        content = []
+        for i, chunk in enumerate(chunks):
+            if not isinstance(chunk, dict) or 'content' not in chunk:
+                logger.error(f"Invalid chunk format at index {i}: {chunk}")
+                raise HTTPException(
+                    status_code=500,
+                    detail="Invalid chunk format returned from retriever"
+                )
+            content.append(chunk['content'])
+        content = "\n".join(content)
+        logger.info(f"Extracted content length: {len(content)} characters")
+
+        if not content.strip():
+            logger.warning("Extracted content is empty")
+            raise HTTPException(
+                status_code=404,
+                detail="Lecture content is empty"
+            )
+
+        # TODO: Add your LLM call here to generate the summary using summarization_model.py
+        logger.info("Returning placeholder summary")
         return {
             "status": "success",
             "summary": {
@@ -113,8 +154,12 @@ async def summarize_lecture(lecture_url: str):
                 ]
             }
         }
-        
+
+    except HTTPException as he:
+        logger.error(f"HTTPException: {he.detail}")
+        raise he
     except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Failed to summarize lecture: {str(e)}"

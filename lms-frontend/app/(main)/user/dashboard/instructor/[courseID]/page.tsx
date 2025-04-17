@@ -2,7 +2,7 @@
 
 import {useState, useLayoutEffect} from "react";
 import { useParams } from "next/navigation";
-import { Box, Typography, Tabs, Tab, Grid2, Paper, List, ListItem, ListItemText, Divider, Button, Link, IconButton, FormGroup, FormControlLabel, Checkbox, TextField } from "@mui/material";
+import { Box, Typography, Tabs, Tab, Grid2, Paper, List, ListItem, ListItemText, Divider, Button, Link, IconButton, FormGroup, FormControlLabel, Checkbox, TextField, InputLabel, Select, MenuItem, FormControl } from "@mui/material";
 import { Delete } from "@mui/icons-material";
 import { createClient } from "@/utils/supabase/client";
 import ResponsiveAppBar from "@/app/_components/navbar";
@@ -34,8 +34,10 @@ export default function CoursePage() {
   const [files, setFiles] = useState<FileItem[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [showFileSelector, setShowFileSelector] = useState(false);
-  const [activeTool, setActiveTool] = useState<'quiz' | 'assignment' | null>(null);
+  const [activeTool, setActiveTool] = useState<'quiz' | 'assignment' | 'summarize' | null>(null);
   const [prompt, setPrompt] = useState<string>('');
+  const [selectedLecture, setSelectedLecture] = useState<string>('');
+  const [showLectureSelector, setShowLectureSelector] = useState(false);
 
   const supabase = createClient();
 
@@ -171,7 +173,24 @@ export default function CoursePage() {
     setFiles(allFiles);
   };
 
+  const handleSummarizeLecture = async () => {
+    if (!selectedLecture) {
+      alert('Please select a lecture to summarize');
+      return;
+    }
 
+    try {
+      const result = await summarizeLecture(selectedLecture);
+      console.log('Summary:', result);
+      // TODO: Display the summary in a modal or new section
+      setShowLectureSelector(false);
+      setActiveTool(null);
+      setSelectedLecture('');
+    } catch (error) {
+      console.error('Summarization error:', error);
+      alert('Failed to generate summary');
+    }
+  };
 
   useLayoutEffect(() => {
     const fetchCourse = async () => {
@@ -415,21 +434,9 @@ export default function CoursePage() {
                     fullWidth 
                     sx={{ mt: 1 }} 
                     variant="outlined"
-                    onClick={async () => {
-                      try {
-                        // Get the first lecture URL from the files list
-                        const lectureFile = files.find(f => f.name.startsWith('lectures/'));
-                        if (!lectureFile) {
-                          alert('No lecture files found');
-                          return;
-                        }
-                        const result = await summarizeLecture(lectureFile.url);
-                        // TODO: Display the summary in a modal or new section
-                        console.log('Summary:', result);
-                      } catch (error) {
-                        console.error('Summarization error:', error);
-                        alert('Failed to generate summary');
-                      }
+                    onClick={() => {
+                      setActiveTool('summarize');
+                      setShowLectureSelector(true);
                     }}
                   >
                     Start
@@ -525,9 +532,56 @@ export default function CoursePage() {
                 </Box>
               </Paper>
             )}
-          </Box>
+
+            {showLectureSelector && (
+          <Paper elevation={3} sx={{ p: 3, mt: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Select a lecture to summarize
+            </Typography>
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel id="lecture-select-label">Lecture</InputLabel>
+              <Select
+                labelId="lecture-select-label"
+                value={selectedLecture}
+                label="Lecture"
+                onChange={(e) => setSelectedLecture(e.target.value)}
+              >
+                {files
+                  .filter(file => file.name.startsWith('lectures/'))
+                  .map((file) => {
+                    const lecturePath = `${courseID}/${file.name}`; // Construct courseID/lectures/*.pdf
+                    return (
+                      <MenuItem key={file.url} value={lecturePath}>
+                        {file.name.replace('lectures/', '')}
+                      </MenuItem>
+                    );
+                  })}
+              </Select>
+            </FormControl>
+            <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
+              <Button 
+                variant="contained" 
+                onClick={handleSummarizeLecture}
+                disabled={!selectedLecture}
+              >
+                Summarize
+              </Button>
+              <Button 
+                variant="outlined" 
+                onClick={() => {
+                  setShowLectureSelector(false);
+                  setActiveTool(null);
+                  setSelectedLecture('');
+                }}
+              >
+                Cancel
+              </Button>
+            </Box>
+          </Paper>
         )}
-      </Box>
+        </Box>
+      )}
     </Box>
-  );
+  </Box>
+);
 }

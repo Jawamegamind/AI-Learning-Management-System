@@ -45,6 +45,7 @@ export async function generateAssignmentOrQuiz(prompt: string, lectureUrls: stri
 
 export async function summarizeLecture(lectureUrl: string) {
   try {
+    console.log(`Sending summarize request for lecture URL: ${lectureUrl}`);
     const response = await axios.post(
       "http://localhost:8000/api/generation/summarize-lecture",
       { lecture_url: lectureUrl }
