@@ -9,6 +9,7 @@ class AssignmentState(TypedDict):
     feedback: str         # Feedback of the assignment
     urls: Optional[List[str]]  # Optional URLs for document context
     option: str             # "quiz" or "assignment"
+    scores: List[int]       #list of all scores
 
 
 class AssignmentRequest(BaseModel):

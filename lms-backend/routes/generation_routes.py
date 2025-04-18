@@ -45,22 +45,19 @@ async def generate_quiz(request: QuizRequest):
     Generate a quiz based on the prompt and lecture materials.
     """
     try:
-        # TODO: Add your LLM call here to generate the quiz
-        # For now, return a placeholder response
+        print("hitting router, urls should be filepaths not urls", request.lecture_urls)
+        result = generate_assignment_workflow(
+            input_content=request.prompt,
+            openrouter_api_key=os.getenv("OPENROUTER_API_KEY"),
+            assignmentorquiz= "quiz",
+            urls=request.lecture_urls,
+        )
+        if result["status"] == "failed":
+            raise HTTPException(status_code=400, detail=result["assignment"])
+
         return {
             "status": "success",
-            "quiz": {
-                "title": "Generated Quiz",
-                "description": "This is a placeholder for the generated quiz",
-                "questions": [
-                    {
-                        "question": "Sample question 1?",
-                        "options": ["A", "B", "C", "D"],
-                        "correct_answer": "A"
-                    }
-                ],
-                "context_used": "..."  # First 500 chars of context
-            }
+            "assignment": result["assignment"]
         }
 
     except Exception as e:

@@ -1,14 +1,19 @@
 import re
 import ast
 import json
+import base64
 import nbformat
+from io import BytesIO
 from openai import OpenAI
+from reportlab.pdfgen import canvas
 from typing import List, Optional
 from database.retriever import Retriever
+from reportlab.lib.pagesizes import LETTER
 from langgraph.graph import StateGraph, START, END
 from sentence_transformers import SentenceTransformer
 from models.generation_model import AssignmentState
 from nbformat.v4 import new_notebook, new_code_cell, new_markdown_cell
+from .prompts import getmetaprompt, getgenerationprompt, getverificationprompt, COMPONENT_WEIGHTAGES
 
 
 # Initialize embedding model (adjust model as needed)
@@ -29,7 +34,6 @@ def query_openrouter(prompt: str, api_key: str, max_length: int = 500, model: st
     except Exception as e:
       print("api call to llm error", completion.error['message'])
       return ""
-    # return completion.choices[0].message.content
 
 def extract_score(text: str) -> float:
     matchh = re.search(r"\[\[\[REVIEW_SCHEME\]\]\] = (\{.*\})", text)
@@ -42,15 +46,8 @@ def extract_score(text: str) -> float:
     except Exception as e:
         print(f"Failed to parse scores dict: {e}")
         return 0.0
-    weightages = {
-        'clarity': 0.05,
-        'boilerplate': 0.25,
-        'todo': 0.25,
-        'overlap': 0.1,
-        'formatting': 0.05,
-        'feedback': 0.3
-    }
-    score = sum(scores_dict[k] * v for k, v in weightages.items())
+
+    score = sum(scores_dict[k] * v for k, v in COMPONENT_WEIGHTAGES.items())
     return score * 10
 
 def metaprompt_node(state: AssignmentState, api_key: str) -> AssignmentState:
@@ -95,7 +92,6 @@ def metaprompt_node(state: AssignmentState, api_key: str) -> AssignmentState:
                 query_embedding=query_embedding,
                 limit_rows=5
             )
-            print("no-url-res",results)
             context = "\n".join([
                 f"Document Chunk (Similarity: {r[3]:.2f}): {r[1]}"
                 for r in results
@@ -107,29 +103,8 @@ def metaprompt_node(state: AssignmentState, api_key: str) -> AssignmentState:
         context = "Failed to retrieve context."
 
     # Augment metaprompt with retrieved context
-    metaprompt = f"""
-        You are an expert assignment designer for programming and coding assignments covering various domains like fullstack development and data science / AI in Python.
-
-        Given the raw input prompt: "{raw_prompt}", and the following context from course materials:
-
-        === Context ===
-        {context}
-        === End Context ===
-
-        Determine if this is a valid topic on which a detailed assignment can be made. Use the context to inform the assignment's scope, examples, or specific requirements (e.g., datasets, models, or techniques mentioned).
-
-        If valid, expand it into a structured assignment plan with sections like:
-        1. Introduction / Background
-        2. Task 1: Coding-based problem
-        3. Task 2: Analytical comparison
-        4. Expected output formats
-
-        Clearly mention sub-topics to cover, model types, variations, etc., incorporating relevant details from the context.
-
-        If it's a nonsense or fake prompt or if you are unsure and not confident about the prompt, respond with: "Invalid prompt: [reason]".
-
-        Respond ONLY with the structured assignment plan or invalid message.
-    """
+    print("metaprompt node call",state['option'])
+    metaprompt = getmetaprompt(raw_prompt,context,state['option'])
     output = query_openrouter(metaprompt, api_key)
     print("[METAPROMPT]========",output)
     if output.lower().startswith("invalid prompt"):
@@ -138,79 +113,35 @@ def metaprompt_node(state: AssignmentState, api_key: str) -> AssignmentState:
 
 def generate_assignment_node(state: AssignmentState, api_key: str) -> AssignmentState:
     prompt = state["assignment"]
-    gen_prompt = f"""
-        You are an AI assignment generator. Convert the following structured prompt into a markdown-based programming assignment.
-
-        For each coding task:
-        - Use markdown to describe the task.
-        - Add appropriate Python code cells with TODO brackets.
-        - Import necessary libraries.
-        - Initialize basic models or datasets.
-        - Ensure logical progression (with NO OVERLAP) from task to task.
-
-        Prompt:
-        {prompt}
-
-        Return the assignment in plain text with clear separation between markdown and code blocks.
-    """
+    gen_prompt = getgenerationprompt(prompt,state['option'])
     assignment = query_openrouter(gen_prompt, api_key)
     state["assignment"] = assignment
     print("[ASSIGNMENT]========",assignment)
     return {**state, "assignment": assignment}
 
 def verify_assignment_node(state: AssignmentState, api_key: str) -> AssignmentState:
+    if state['option'] == 'quiz':
+        return {**state, "status": "verified"}
+
     feedback_prompt = "This is the first draft so give full marks (10/10)" if state['feedback'] == "" else f"Feedback: {state['feedback']}. If the given feedback has NOT been FULLY incorporated, PENALIZE HARSHLY."
     print("######################################feedback_prompt",feedback_prompt)
-    critique_prompt = f"""
-        You are reviewing a programming assignment. The assignment content is below:
-        =====================
-        {state['assignment']}
-        =====================
-
-        EVALUATE it STRICTLY based on the following criteria. Assign a score out of 10 for each and justify with 1-2 sentences.
-
-        For each criterion, do the following:
-        1. Give a score out of 10.
-        2. Justify the score with 1-2 sentences.
-
-        1. **Clarity and Completeness**:
-          - Does the prompt clearly explain each task's objective and context?
-          - Are all terms and technical jargon explained briefly or linked with external references?
-          - Does it clearly state which frameworks / libraries / models the student is expected to use?
-
-        2. **Boilerplate & Setup Code**:
-          - Does it import and/or install the required libraries?
-          - Does it include boilerplate setup code like loading a model or writing classes with init functions?
-          - Are models, datasets, utility functions initialized or setup so students can jump to the main logic?
-
-        3. **Code Quality & TODOs**:
-          - Are TODOs specific, technical, and meaningful?
-          - Do they isolate complex logic while keeping reusable code provided?
-          - Is there an outline of the entire pipeline: preprocessing, pruning, retraining, evaluation, reporting?
-
-        4. **Task Redundancy / Overlap**:
-          - Tasks should be distinct and may be divided into subtasks if complex.
-          - Avoid repetition and ensure flow and progression in learning.
-
-        5. **Formatting**:
-          - Are code blocks correctly formatted with "```python" and not raw Jupyter magic?
-
-        6. **Feedback Incorporation**:
-          {feedback_prompt}
-
-         At the end, write the following in one line ... [[[REVIEW_SCHEME]]] = {{ 'clarity': CLARITY_SCORE, 'boilerplate': BOILERPLATE_SCORE, 'todo': TODO_SCORE, 'overlap': OVERLAP_SCORE, 'formatting': FORMATTING_SCORE, 'feedback': FEEDBACK_SCORE }}
-    """
+    critique_prompt = getverificationprompt(state['assignment'], feedback_prompt)
     review = query_openrouter(critique_prompt, api_key)
     state['feedback'] = review
     score = extract_score(review)
-    print("Score:", score, "attempt", state['attempts'])
+    print('Last 3 Scores', state['scores'])
+    print("New Score:", score, "@ Attempt", state['attempts'])
     print("Review:", review)
+    not_improving = len(state['scores']) >= 3 and state['scores'][-1] == state['scores'][-2] == state['scores'][-3]
+    state['scores'].append(score)
 
-    if score >= 90.0 or state['attempts'] >=5 :
+    if score >= 90.0 or state['attempts'] >=5 or not_improving :
         return {**state, "status": "verified"}
+
     return {**state, "status": "pending", "attempts": state["attempts"] + 1}
 
 def convert_to_notebook_node(state: AssignmentState) -> AssignmentState:
+    print("converting assignment to notebook")
     text = state["assignment"]
     cells = []
     lines = text.split("\n")
@@ -241,23 +172,97 @@ def convert_to_notebook_node(state: AssignmentState) -> AssignmentState:
     notebook_json = json.loads(notebook_json_str)
     return {**state, "status": "complete", "assignment": notebook_json}
 
+def convert_to_pdf_node(state: AssignmentState) -> AssignmentState:
+    print("converting quiz to pdf")
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=LETTER)
+    width, height = LETTER
+    x_margin = 50
+    y_position = height - 50
+    line_height = 14
+
+    lines = state['assignment'].splitlines()
+
+    for line in lines:
+        if line.strip() == "":
+            y_position -= line_height
+            continue
+
+        # Break line into styled segments
+        segments = re.split(r'(\*\*\*.*?\*\*\*)', line)
+        styled_segments = []
+        for seg in segments:
+            if seg.startswith('***') and seg.endswith('***'):
+                styled_segments.append((seg[3:-3], "Helvetica-Bold"))
+            else:
+                styled_segments.append((seg, "Helvetica"))
+
+        current_x = x_margin
+        for text, font in styled_segments:
+            words = text.split(' ')
+            for word in words:
+                word_width = c.stringWidth(word + ' ', font, 11)
+
+                # Wrap to next line if necessary
+                if current_x + word_width > width - x_margin:
+                    y_position -= line_height
+                    if y_position < 50:
+                        c.showPage()
+                        y_position = height - 50
+                    current_x = x_margin
+
+                c.setFont(font, 11)
+                c.drawString(current_x, y_position, word + ' ')
+                current_x += word_width
+
+        y_position -= line_height
+        if y_position < 50:
+            c.showPage()
+            y_position = height - 50
+
+    c.save()
+    buffer.seek(0)
+    pdf_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    return {**state, "status": "complete", "assignment": pdf_base64}
+
+
 def generate_assignment_workflow(input_content: str, openrouter_api_key: str, assignmentorquiz: str, urls: Optional[List[str]] = None) -> dict:
     workflow = StateGraph(AssignmentState)
+
+    #Nodes
     workflow.add_node("metaprompt", lambda s: metaprompt_node(s, openrouter_api_key))
     workflow.add_node("generate_assignment", lambda s: generate_assignment_node(s, openrouter_api_key))
     workflow.add_node("verify_assignment", lambda s: verify_assignment_node(s, openrouter_api_key))
     workflow.add_node("convert_to_notebook", convert_to_notebook_node)
+    workflow.add_node("convert_to_pdf", convert_to_pdf_node)
+
+    #Edges
     workflow.add_edge(START, "metaprompt")
     workflow.add_conditional_edges("metaprompt", lambda s: s["status"], {
         "failed": END,
         "pending": "generate_assignment"
     })
     workflow.add_edge("generate_assignment", "verify_assignment")
-    workflow.add_conditional_edges("verify_assignment", lambda s: s["status"], {
-        "verified": "convert_to_notebook",
-        "pending": "generate_assignment"
+
+    # Conditional routing after verification
+    def handle_verified_routing(state):
+        if state["status"] == "verified":
+            return "convert_to_notebook" if state["option"] == "assignment" else "convert_to_pdf"
+        elif state["status"] == "pending":
+            return "generate_assignment"
+        else:
+            print("should-never-enter-this-part-of-workflow")
+            return END
+
+    workflow.add_conditional_edges("verify_assignment", handle_verified_routing, {
+        "convert_to_notebook": "convert_to_notebook",
+        "convert_to_pdf": "convert_to_pdf",
+        "generate_assignment": "generate_assignment"
     })
+
     workflow.add_edge("convert_to_notebook", END)
+    workflow.add_edge("convert_to_pdf", END)
+
     graph = workflow.compile()
     initial_state = {
         "input_content": input_content,
@@ -266,6 +271,7 @@ def generate_assignment_workflow(input_content: str, openrouter_api_key: str, as
         "status": "pending",
         "attempts": 0,
         "urls": urls,
-        "option":assignmentorquiz
+        "option":assignmentorquiz,
+        "scores": []
     }
     return graph.invoke(initial_state)

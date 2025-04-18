@@ -33,6 +33,7 @@ export default function CoursePage() {
   const [course, setCourse] = useState<Course | null>(null);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [selectedFilePaths, setSelectedFilePaths] = useState<string[]>([]);
   const [showFileSelector, setShowFileSelector] = useState(false);
   const [activeTool, setActiveTool] = useState<'quiz' | 'assignment' | 'summarize' | null>(null);
   const [userprompt, setPrompt] = useState<string>('');
@@ -55,6 +56,16 @@ export default function CoursePage() {
     });
   };
 
+  const handleFilePathSelection = (filePath: string) => {
+    setSelectedFilePaths(prev => {
+      if (prev.includes(filePath)) {
+        return prev.filter(path => path !== filePath);
+      } else {
+        return [...prev, filePath];
+      }
+    });
+  };
+
   const handleGenerateContent = async (option: 'quiz' | 'assignment') => {
     // if (selectedFiles.length === 0) {
     //   alert('Please select at least one file');
@@ -69,7 +80,7 @@ export default function CoursePage() {
     try {
       const result = await generateAssignmentOrQuiz(
         userprompt,
-        selectedFiles as string[],
+        selectedFilePaths as string[],
         option
       );
       const folderType = option === 'quiz' ? 'quizzes' : 'assignments';
@@ -82,24 +93,45 @@ export default function CoursePage() {
             }
           }
           console.log(`${option.charAt(0).toUpperCase() + option.slice(1)}: saving to ${folderType}`, result);
-          const path = `${courseID}/${folderType}/${filename}.ipynb`;
+          if (option === 'quiz'){
+            const path = `${courseID}/${folderType}/${filename}.pdf`;
 
-          const { data, error } = await supabase.storage
-            .from('course-materials')
-            .upload(path, JSON.stringify(result), {
-              contentType: 'application/json',
-              upsert: true, // Overwrites if the file already exists
-            });
+            // Decode base64 to binary data (if you used base64 encoding)
+            const pdfBuffer = Uint8Array.from(atob(result), c => c.charCodeAt(0));
 
-          if (error) {
-            console.error('Upload failed:', error.message);
-            throw new Error(`Upload failed: ${error.message}`);
+            const { data, error } = await supabase.storage
+              .from('course-materials')
+              .upload(path, pdfBuffer, {
+                contentType: 'application/pdf',
+                upsert: true, // Overwrites if the file already exists
+              });
+
+            if (error) {
+              console.error('Upload failed:', error.message);
+              throw new Error(`Upload failed: ${error.message}`);
+            }
+
+          } else {  //'assignment'
+            const path = `${courseID}/${folderType}/${filename}.ipynb`;
+
+            const { data, error } = await supabase.storage
+              .from('course-materials')
+              .upload(path, JSON.stringify(result), {
+                contentType: 'application/json',
+                upsert: true, // Overwrites if the file already exists
+              });
+
+            if (error) {
+              console.error('Upload failed:', error.message);
+              throw new Error(`Upload failed: ${error.message}`);
+            }
           }
       }
       // TODO: Display the result in a modal or new section
       setShowFileSelector(false);
       setActiveTool(null);
       setSelectedFiles([]);
+      setSelectedFilePaths([]);
       setPrompt('');
     } catch (error) {
       console.error(`${option} generation error:`, error);
@@ -194,6 +226,7 @@ export default function CoursePage() {
     }
 
     setFiles(allFiles);
+    // console.log(allFiles)
   };
 
   const handleSummarizeLecture = async () => {
@@ -512,7 +545,10 @@ export default function CoursePage() {
                       control={
                         <Checkbox
                           checked={selectedFiles.includes(file.url)}
-                          onChange={() => handleFileSelection(file.url)}
+                          onChange={() => {
+                            handleFileSelection(file.url)
+                            handleFilePathSelection(`${courseID}/`+file.name)
+                          }}
                         />
                       }
                       label={file.name}
@@ -547,6 +583,7 @@ export default function CoursePage() {
                       setShowFileSelector(false);
                       setActiveTool(null);
                       setSelectedFiles([]);
+                      setSelectedFilePaths([]);
                       setPrompt('');
                     }}
                   >
