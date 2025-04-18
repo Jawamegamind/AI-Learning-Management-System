@@ -1,0 +1,27 @@
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	retrieval(retrieval)
+	metaprompt(metaprompt)
+	generate_assignment(generate_assignment)
+	verify_assignment(verify_assignment)
+	convert_to_notebook(convert_to_notebook)
+	convert_to_pdf(convert_to_pdf)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> retrieval;
+	convert_to_notebook --> __end__;
+	convert_to_pdf --> __end__;
+	generate_assignment --> verify_assignment;
+	retrieval --> metaprompt;
+	metaprompt -. &nbsp;failed&nbsp; .-> __end__;
+	metaprompt -. &nbsp;pending&nbsp; .-> generate_assignment;
+	verify_assignment -.-> convert_to_notebook;
+	verify_assignment -.-> convert_to_pdf;
+	verify_assignment -.-> generate_assignment;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc

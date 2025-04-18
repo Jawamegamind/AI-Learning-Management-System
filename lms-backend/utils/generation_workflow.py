@@ -104,18 +104,19 @@ def metaprompt_node(state: AssignmentState, api_key: str) -> AssignmentState:
                     query_text=optimized_query,
                     query_embedding=query_embedding,
                     relevant_doc_ids=relevant_doc_ids,
-                    limit_rows=5
+                    limit_rows= 10
                 )
                 if len(results) == 0:
                     print("no relevant chunk found from the docs")
                 else:
                     print("relevant chunks found from docs")
-                    print(results)
+                    safe_results = [
+                       r[1].encode('utf-8', errors='replace').decode('utf-8')
+                        for r in results
+                    ]
+                    print(safe_results)
                 # Format context from results (id, content, embedding_id, similarity)
-                context = "\n".join([
-                    f"Document Chunk (Similarity: {r['similarity']:.2f}): {r['content']}"
-                    for r in results
-                ])
+                context = "\n".join(safe_results)
             else:
                 context = "No documents found for provided URLs."
         else:
@@ -123,14 +124,22 @@ def metaprompt_node(state: AssignmentState, api_key: str) -> AssignmentState:
             results = retriever.hybrid_search(
                 query_text=optimized_query,
                 query_embedding=query_embedding,
-                limit_rows=5
+                limit_rows= 10
             )
-            context = "\n".join([
-                f"Document Chunk (Similarity: {r[3]:.2f}): {r[1]}"
-                for r in results
-            ])
+            safe_results = [
+                        r[1].encode('utf-8', errors='replace').decode('utf-8')
+                        for r in results
+                    ]
+            context = "\n".join(safe_results)
         if not context:
             context = "No relevant documents found."
+        with open('retrieval_output.txt', 'a', encoding='utf-8') as f:
+            f.write(f"--- New Retrieval ---\n")
+            f.write(f"Optimized Query: {optimized_query}\n")
+            f.write(f"Context:\n{context}\n")
+            f.write(f"--- End Retrieval ---\n")
+            
+        
     except Exception as e:
         print(f"Retriever error: {e}")
         context = "Failed to retrieve context."
@@ -309,4 +318,17 @@ def generate_assignment_workflow(input_content: str, openrouter_api_key: str, as
         "scores": [],
         "optimized_query": ""
     }
+
+    # Generate Mermaid diagram
+    try:
+        mermaid_code = graph.get_graph().draw_mermaid()
+        with open("workflow_graph.mmd", "w", encoding="utf-8") as f:
+            f.write(mermaid_code)
+        print("Mermaid diagram saved as workflow_graph.mmd")
+        print("Render it at: https://mermaid.live/")
+        print("\nMermaid Code:\n")
+        print(mermaid_code)
+    except Exception as e:
+        print(f"Failed to generate Mermaid diagram: {e}")
+
     return graph.invoke(initial_state)

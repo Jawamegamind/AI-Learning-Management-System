@@ -2,7 +2,7 @@
 
 import {useState, useLayoutEffect} from "react";
 import { useParams } from "next/navigation";
-import { Box, Typography, Tabs, Tab, Grid2, Paper, List, ListItem, ListItemText, Divider, Button, Link, IconButton, FormGroup, FormControlLabel, Checkbox, TextField, InputLabel, Select, MenuItem, FormControl } from "@mui/material";
+import { Box, Typography, Tabs, Tab, Grid2, Paper, List, ListItem, ListItemText, Divider, Button, Link, IconButton, FormGroup, FormControlLabel, Checkbox, TextField, InputLabel, Select, MenuItem, FormControl, LinearProgress, CircularProgress } from "@mui/material";
 import { Delete, Download } from "@mui/icons-material";
 import { createClient } from "@/utils/supabase/client";
 import ResponsiveAppBar from "@/app/_components/navbar";
@@ -39,6 +39,9 @@ export default function CoursePage() {
   const [userprompt, setPrompt] = useState<string>('');
   const [selectedLecture, setSelectedLecture] = useState<string>('');
   const [showLectureSelector, setShowLectureSelector] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [generationStatus, setGenerationStatus] = useState<string>('');
   const supabase = createClient();
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -76,12 +79,32 @@ export default function CoursePage() {
       return;
     }
 
+    setIsGenerating(true);
+    setGenerationProgress(0);
+    setGenerationStatus('Starting generation...');
+
     try {
+      // Simulate progress updates
+      const progressInterval = setInterval(() => {
+        setGenerationProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 1000);
+
       const result = await generateAssignmentOrQuiz(
         userprompt,
         selectedFilePaths as string[],
         option
       );
+      
+      clearInterval(progressInterval);
+      setGenerationProgress(100);
+      setGenerationStatus('Generation complete! Saving file...');
+      
       const folderType = option === 'quiz' ? 'quizzes' : 'assignments';
       if (result !== undefined) {
           let filename: string | null = "";
@@ -132,9 +155,15 @@ export default function CoursePage() {
       setSelectedFiles([]);
       setSelectedFilePaths([]);
       setPrompt('');
+      setIsGenerating(false);
+      setGenerationProgress(0);
+      setGenerationStatus('');
     } catch (error) {
       console.error(`${option} generation error:`, error);
       alert(`Failed to generate ${option}`);
+      setIsGenerating(false);
+      setGenerationProgress(0);
+      setGenerationStatus('');
     }
   };
 
@@ -597,23 +626,49 @@ export default function CoursePage() {
                     sx={{ mb: 2 }}
                   />
                 </Box>
+                {isGenerating && (
+                  <Box sx={{ width: '100%', mb: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <Box sx={{ width: '100%', mr: 1 }}>
+                        <LinearProgress variant="determinate" value={generationProgress} />
+                      </Box>
+                      <Box sx={{ minWidth: 35 }}>
+                        <Typography variant="body2" color="text.secondary">{`${Math.round(generationProgress)}%`}</Typography>
+                      </Box>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary" align="center">
+                      {generationStatus}
+                    </Typography>
+                  </Box>
+                )}
                 <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
-                  <Button
-                    variant="contained"
+                  <Button 
+                    variant="contained" 
                     onClick={() => handleGenerateContent(activeTool as 'quiz' | 'assignment')}
-                    disabled={!userprompt.trim()}
+                    disabled={!userprompt.trim() || isGenerating}
                   >
-                    Generate
+                    {isGenerating ? (
+                      <>
+                        <CircularProgress size={24} sx={{ mr: 1 }} />
+                        Generating...
+                      </>
+                    ) : (
+                      'Generate'
+                    )}
                   </Button>
-                  <Button
-                    variant="outlined"
+                  <Button 
+                    variant="outlined" 
                     onClick={() => {
                       setShowFileSelector(false);
                       setActiveTool(null);
                       setSelectedFiles([]);
                       setSelectedFilePaths([]);
                       setPrompt('');
+                      setIsGenerating(false);
+                      setGenerationProgress(0);
+                      setGenerationStatus('');
                     }}
+                    disabled={isGenerating}
                   >
                     Cancel
                   </Button>

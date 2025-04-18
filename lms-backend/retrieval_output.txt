@@ -1,0 +1,561 @@
+--- New Retrieval ---
+Optimized Query: Generate a quiz on tokenization and embeddings, testing their use and importance for pertaining of LLMs.
+Context:
+Lecture 4: Tokenization, Embedding and Pre-Training of LLM
+Syed Babar Ali School of  Science and Engineering LUMS
+Spring 2025
+Problem Solving – Artificial Intelligence – Uncertainty
+AI-602: Large Language Models 
+Systems
+BPE: Pitfall
+Now that we have tokenized text, let's 
+explore how we represent these 
+tokens using embeddings.
+Embedding – Next Step after Tokenization
+“Iam a student”
+ Tokenizer Token 
+Embedding
+I
+am
+a
+student
+1
+2
+3
+4
+D-dimensional 
+Vectors
+Tokenization – Why and What?
+What is Tokenization?
+Tokenization is the process of breaking down text into 
+smaller units called tokens, which can be words, subwords, 
+characters, or symbols. It is a fundamental step in NLP and 
+LLMs, serving as the foundation for embedding and model 
+training.
+Why is Tokenization Important?
+•Converts raw text into manageable units for machine 
+learning models.
+•Helps computers process and understand human language 
+efficiently.
+•Handles unknown words, multiple languages, and large 
+datasets effectively.
+Embeddings: Starting from Basics
+“Iam a student”
+Tokenizer 
+VocabularySize:
+𝑇
+T okenEmbedding 
+EmbeddingDim: 
+D
+D[0,
+182,
+874,
+19084]
+The roleof theembeddingis to 
+assigna vectorto eachtoken
+D = 2
+0,“I"
+128,“am"
+874,“a"
+19084,“student"
+𝑥𝜖ℝ𝑁×D
+Applications - LLM Tokenizer
+• Used in basic NLP tasks like sentiment analysis, search 
+engines, and rule-based text processing.
+Word-Level Tokenization 
+(Space-based, Rule-based, 
+Punctuation-based)
+• Essential for LLMs & deep learning models  (BERT, GPT, T5).
+• Used in machine translation, speech recognition, and OCR
+for multilingual text.
+Subword Tokenization 
+(WordPiece, BPE, 
+SentencePiece, Unigram)
+• Applied in spell checking, noisy text processing, 
+handwriting recognition, and code tokenization .
+• Useful for low-resource languages and text generation .
+Character-Level 
+Tokenization
+Agenda
+• Why Train an LLM from scratch
+• T okenization
+• Vector Embeddings
+• Transformers
+• Scaling Law
+• Hardware Considerations
+• Pre-Training
+Agenda
+• Why Train an LLM from scratch
+• T okenization
+• Vector Embeddings
+• Transformers
+• Scaling Law
+• Hardware Considerations
+• Pre-Training
+Agenda
+• Why Train an LLM from scratch
+• T okenization
+• Vector Embeddings
+• Transformers
+• Scaling Law
+• Hardware Considerations
+• Pre-Training
+Agenda
+• Why Train an LLM from scratch
+• T okenization
+• Vector Embeddings
+• Transformers
+• Scaling Law
+• Hardware Considerations
+• Pre-Training
+--- End Retrieval ---
+--- New Retrieval ---
+Optimized Query: Generate a quiz on the different frameworks of converting an business problem to its AI solution.
+Context:
+Problem Formulation Frameworks
+• You have a brilliant idea for a new AI 
+project. 
+o To make it happen, you need to 
+convince management to fund your 
+idea.
+• AI projects are hard to define
+• Several frameworks to guide problem 
+formulation
+o AI Canvas
+o CRISP-DM
+o Design Thinking
+Design Thinking: A more human centric approach in AI
+• Empathize
+o Deep understanding of the problems users face
+o Context they face
+o Involves conducting user interviews, surveys, and observational studies 
+to uncover insights
+• Define
+o Clearly articulate the problem
+o For example, in developing a healthcare AI, defining the problem might 
+involve specifying how the technology can assist healthcare 
+professionals in diagnosis or treatment planning
+• Ideate
+o Encourages creative thinking and brainstorming to generate a wide range 
+of potential solutions
+o Explore different algorithms for solutions
+• Prototype
+o Creating tangible representations of the selected ideas
+o Allows developers to gather valuable feedback from users and 
+stakeholders, iterating on the design based on real-world insightss
+• Test
+o Iterative
+o Validates the solution with real -world users
+Understanding, Data Understanding, 
+Data Preparation, Modeling, 
+Evaluation, Deployment
+Key areas: Problem Statement, AI 
+Objectives, AI Techniques, Data, 
+Success Metrics, Challenges, 
+Stakeholders
+Flexibility Flexible, can iterate between stages 
+based on findings
+Structured framework to quickly 
+visualize key elements of an AI project
+Best Use Case Projects involving data analysis and 
+model building
+AI-driven projects focused on aligning 
+technology with business goals
+Methodology TypeProcess-driven, cyclical Strategic, visual, and ideation-focused
+End Goal Building predictive models or insights 
+from data
+Defining and aligning AI solutions with 
+business objectives
+Primary Users Data scientists, analysts, project 
+managers
+AI project teams, strategists, and 
+business stakeholders
+Use case evaluation
+• Ask why to build application
+o "Solving the wrong problem is like climbing up a ladder that’s 
+leaning against the wrong wall."
+• If you don't!
+o Competitors with AI can make you obsolete
+o Miss opportunities to boost profits and productivity.
+• Considerations:
+o Existential threat                   Build in -house
+o Outsource                   AI to boost profits and productivity
+Lecture 3: Business Problem & Dataset Engineering for LLMs
+LUMS Syed Babar Ali School of Science and Engineering 
+Spring 2025
+Problem Solving – Artificial Intelligence – Uncertainty
+AI-602: Large Language Models 
+Systems
+Example
+Approach Example Scenario Why It's Ideal
+AI Canvas AI-driven pricing optimization 
+system
+Focus on business alignment, 
+strategy, and maximizing 
+profits.
+CRISP-DM
+Predicting patient survival 
+rates using historical medical 
+data
+Structured approach to data 
+understanding, model 
+building, and evaluation.
+Design Thinking AI-powered virtual assistant 
+for elderly users
+Emphasis on empathy, user 
+experience, and iterative, 
+user-centered design.
+AI Canvas: Ingredients
+• Data
+o How much data do you need?
+o Do you have already a prepared dataset or 
+do you need to source it? 
+o Does it have to be labeled? 
+o What data format are you expecting?
+• Skills
+o Computer vision or natural language 
+understanding? 
+o Software developer roles?
+o Product Manager and a UX Designer to 
+gather customer requirements and to design 
+a workflow?
+• Output Block
+o Quantify Business success
+o Quantitative Evaluation metric
+TOPICS
+1. Why is AI Engineering different?
+2. Problem Framing in AI
+3. The Role of Data in AI Applications
+4. Techniques for Dataset Engineering
+▪ Traditional Techniques
+▪ AI based Techniques
+Problem Solving – Artificial Intelligence – Uncertainty
+AI-602: Large Language Models 
+Systems
+AI Canvas
+• AI Canvas is a strategic framework 
+for structuring AI initiatives
+• Helps teams align on the key 
+elements necessary for a successful 
+AI-driven solution. 
+o Helps to align stakeholders
+• The AI Project Canvas consists of 
+four distinct parts:
+o Value Proposition (center)
+o Ingredients (Left)
+o Integration for Customers (Right)
+o Financing on the bottom (Bottom)
+AI Canvas: Integration for Customers
+• Integration
+o Integration into existing Software Architecture
+o Where does it fit into the backend? 
+o How will the customer engage with your model? 
+o Will you use a microservice, monolith, or predict on-
+the-fly during streaming?
+• Stakeholders
+o Internal 
+o External
+• Customers
+o Who is the Customer that you are designing the 
+project for? 
+o Detail about your different customer groups to guide 
+your decision-making throughout the process.
+--- End Retrieval ---
+--- New Retrieval ---
+Optimized Query: Make a quiz testing the broad techniques to optimize training and inference, specifically MoE, PEFT and Quantization.
+Context:
+Agenda
+• Why Efficiency Matter? 
+• Training Efficiency?
+• PEFT
+• MoE 
+• ZeroOptimization
+• Flash Attention
+• Inference Efficiency
+• Quanitzation 
+• Knowledge Distillation
+• Lab Introduction
+Agenda
+• Why Efficiency Matter? 
+• Training Efficiency?
+• PEFT
+• MoE 
+• ZeroOptimization
+• Flash Attention
+• Inference Efficiency
+• Quanitzation 
+• Knowledge Distillation
+• Lab Introduction
+Agenda
+• Why Efficiency Matter? 
+• Training Efficiency?
+• PEFT
+• MoE 
+• ZeroOptimization
+• Flash Attention
+• Inference Efficiency
+• Quanitzation 
+• Knowledge Distillation
+• Lab Introduction
+Agenda
+• Why Efficiency Matter? 
+• Training Efficiency?
+• PEFT
+• MoE 
+• ZeroOptimization
+• Flash Attention
+• Inference Efficiency
+• Quanitzation 
+• Knowledge Distillation
+• Lab Introduction
+Agenda
+• Why Efficiency Matters?  
+• Training Efficiency
+• PEFT  
+• MoE   
+• ZeroOptimization
+• Flash Attention
+• Inference Efficiency
+• Quanitzation   
+• Knowledge Distillation
+• Lab Introduction
+Agenda
+• Why Efficiency Matter? 
+• Training Efficiency?
+• PEFT
+• MoE 
+• ZeroOptimization
+• Flash Attention
+• Inferance Efficiency
+• Quanitzation 
+• Knowledge Distillation
+• Lab Introduction
+Agenda
+• Why Efficiency Matter? 
+• Training Efficiency?
+• PEFT
+• MoE 
+• ZeroOptimization
+• Flash Attention
+• Inferance Efficiency
+• Quanitzation 
+• Knowledge Distillation
+• Lab Introduction
+Agenda
+• Why Efficiency Matter? 
+• Training Efficiency?
+• PEFT
+• MoE 
+• ZeroOptimization
+• Flash Attention
+• Inferance Efficiency
+• Quanitzation 
+• Knowledge Distillation
+• Lab Introduction
+Conclusion
+Technique Pre-training Fine-tuning 
+(Post-training) LLM Deployment Inference Purpose
+PEFT (LoRA, 
+Adapters, Prefix-
+Tuning)
+ No
+  Yes
+  Yes
+  Yes
+Efficient fine-
+tuning by training 
+fewer parameters
+MoE (Mixture of 
+Experts)
+  Yes
+  Sometimes
+  No
+  Yes
+Reduces compute 
+per forward pass 
+by activating only 
+relevant experts
+ZeRO 
+Optimization 
+(DeepSpeed)
+ Yes
+  Yes
+  No
+  No
+Memory 
+optimization for 
+large-scale 
+training across 
+multiple GPUs
+FlashAttention
+  Yes
+  Yes
+  No
+  Yes
+Speeds up 
+attention 
+computation and 
+reduces memory 
+overhead
+Quantization
+  No
+  No
+  Yes
+  Yes
+Reduces model 
+size and speeds 
+up inference by 
+using lower-bit 
+precision (e.g., 
+INT8, FP16)
+Knowledge 
+Distillation
+  Yes
+  Yes
+  Yes
+  Yes
+Compresses large 
+models into 
+smaller, faster 
+models by 
+transferring 
+knowledge
+Lab Introduction
+ Steps in this Lab
+1. Install Required Libraries
+1. Uses transformers, bitsandbytes, and accelerate to run quantized models efficiently .
+2. Set Up Tokenizer and Model Loading
+1. Loads Mistral-7B from Hugging Face.
+2. Uses BitsAndBytesConfig to enable quantization.
+3. Define an Evaluation Function
+1. Runs inference on given prompts.
+2. Measures:
+1. Inference time
+2. Tokens per second
+3. VRAM usage
+4. Model size
+4. Compare 16-bit vs. 4-bit Performance
+1. Runs the same set of test prompts on both versions.
+2. Plots a performance comparison.
+--- End Retrieval ---
+--- New Retrieval ---
+Optimized Query: Generate an assignment exploring the basic Word2Vec framework using CBOW and SkipGram by coding it using pytorch.
+Context:
+Word2Vec T raining
+• Word2Vecis apopulartechniqueto learnwordembeddings.It trainson a large
+corpusandlearnsto predicteither
+– ContinuousBagof Words:Predictthetargetwordgivenitscontextwords
+• Example:Inthesentence"Thekin giswe ar in ga cr o wn,"theCB OW modelwouldt ak ethe 
+contextwordslik eTheandisandtryto predictthetargetwordking
+• Inthiscase ,context is thesurroundingwords,andtheyareal lusedtogetherto mak ea 
+prediction
+– Skip-gr am:Predictthecontextwordsgiv enthetargetword
+• Themodeldoesthereverse:itusesthetargetword to predictthecontextwords
+• Example:Inthesentence"Thekin giswe ar in ga cr o wn,"ifthetargetwordisking,themodelwill
+tryto predictthesurroundingwordslik eTheandis
+• Ineithermethod,Word2Vecupdatesthewordembeddingsto minimize the
+predictionerror
+Embedding T echniques
+• Word2Vec
+– CBOW: Context ist hesurroundingwordsusedto predictth etarget
+– Skip-gram:Thet ar getwordisusedto predictth econtext
+• GloVe
+– Capturescontextthroughwordco-occurrenceacrossth eentirecorpus(global
+• context)
+• Self Attention inT ransformerModels:
+– Uses t hese lf-att entionmech an ismto dy nam ic allyfocuson r eleva ntwordsinthe contextwhen
+comput ingembeddings
+– BERTan dGPT considerth econtextaroundaword(bidirect ion alforBERT , unidirectionalforGPT)
+Word2Vec T raining
+CBOW  Model: Context Averaging
+• In theCBOW model,theembeddingsof thecontextwordsareaveraged to formacontextvector
+– The modeltakestheembeddingsofthecontextwords["The","is","wearing"], sumsthemup,anddividesbythe
+numberofcontextwords
+1
+2
+3
+4
+During training, the model adjusts the embeddings so that the 
+combined contextvector becomes closer to the actual 
+embedding of "king", which is initially [-0.78, 0.56, 0.10].
+After training, this combined context vector [-0.09, 0.09, 0.02] will be much closer to the trained embedding of
+"king" [-0.75, 0.60, 0.12], allowing the model to correctly predict "king" given the contextwords.
+Embedding – Next Step after Tokenization
+“Iam a student”
+ Tokenizer Token 
+Embedding
+I
+am
+a
+student
+1
+2
+3
+4
+D-dimensional 
+Vectors
+Embeddings: Starting from Basics
+“Iam a student”
+Tokenizer 
+VocabularySize:
+𝑇
+T okenEmbedding 
+EmbeddingDim: 
+D
+D[0,
+182,
+874,
+19084]
+The roleof theembeddingis to 
+assigna vectorto eachtoken
+D = 2
+0,“I"
+128,“am"
+874,“a"
+19084,“student"
+𝑥𝜖ℝ𝑁×D
+BERT Pre-Training
+• BERT (Bidirectional Encoder Representations from Transformers) requires large-scale 
+pre-training before fine-tuning for NLP tasks.
+• Pre-training helps the model understand language structures, word relationships, 
+and deep contextual meaning.
+ Key Points:
+ 
+  Traditional word embeddings (Word2Vec, GloVe) are static, while BERT learns 
+contextual embeddings dynamically.
+ Unlike GPT (left-to-right) or traditional RNNs, BERT is bidirectional, meaning it 
+understands both left and right context simultaneously.
+BERT is trained using two self-supervised tasks:
+1.Masked Language Model (MLM)
+2.Next Sentence Prediction (NSP)
+How are Embeddings Created?
+There are different generations of word embeddings:
+1.Traditional (Static) Embeddings
+1.
+  Word2Vec (Mikolov, 2013) – Predicts words based on context (CBOW & Skip-gram).
+2.
+  GloVe (Pennington, 2014) – Uses word co-occurrence to capture relationships.
+3.
+  FastText (Bojanowski, 2016) – Improves Word2Vec by considering subwords.
+2.Modern (Contextual) Embeddings (Used in LLMs)
+1.
+  BERT, RoBERTa, T5 – Generates context-aware embeddings for each word.
+2.
+  GPT-2, GPT-3 – Uses transformer-based embeddings for generation tasks.
+3.
+  mT5, XLM-R – Multilingual embeddings for different languages.
+ Key Difference:
+•Word2Vec/GloVe → Same embedding for "bank" (whether it's "river bank" or "money bank").
+•BERT/GPT → Different embeddings for "bank" based on context.
+BPE: Learning the tokenizer
+• Intuition:startwitheachcharacterasitsown tokenandcombinetokens 
+thatco-occuralot
+Input: A training corpus (sequence of characters/bytes). 
+Initialize the vocabulary V, which is a set of characters. 
+While we want to still grow V:
+• Find the pair of elements x,x′∈ V that co-occur the most
+number of times.
+• Replace all occurrences of x,x′ with a new symbol xx′.
+• Add xx′ to V.
+BERT Pre-training Tasks
+--- End Retrieval ---
