@@ -35,6 +35,7 @@ yarn-error.log*
 */venv
 # vercel
 .vercel
+.venv
 
 # typescript
 *.tsbuildinfo
