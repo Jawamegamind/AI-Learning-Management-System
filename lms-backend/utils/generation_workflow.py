@@ -138,8 +138,8 @@ def metaprompt_node(state: AssignmentState, api_key: str) -> AssignmentState:
             f.write(f"Optimized Query: {optimized_query}\n")
             f.write(f"Context:\n{context}\n")
             f.write(f"--- End Retrieval ---\n")
-            
-        
+
+
     except Exception as e:
         print(f"Retriever error: {e}")
         context = "Failed to retrieve context."
@@ -216,55 +216,58 @@ def convert_to_notebook_node(state: AssignmentState) -> AssignmentState:
 
 def convert_to_pdf_node(state: AssignmentState) -> AssignmentState:
     print("converting quiz to pdf")
-    buffer = BytesIO()
-    c = canvas.Canvas(buffer, pagesize=LETTER)
-    width, height = LETTER
-    x_margin = 50
-    y_position = height - 50
-    line_height = 14
+    try:
+        buffer = BytesIO()
+        c = canvas.Canvas(buffer, pagesize=LETTER)
+        width, height = LETTER
+        x_margin = 50
+        y_position = height - 50
+        line_height = 14
 
-    lines = state['assignment'].splitlines()
+        lines = state['assignment'].splitlines()
 
-    for line in lines:
-        if line.strip() == "":
+        for line in lines:
+            if line.strip() == "":
+                y_position -= line_height
+                continue
+
+            # Break line into styled segments
+            segments = re.split(r'(\*\*\*.*?\*\*\*)', line)
+            styled_segments = []
+            for seg in segments:
+                if seg.startswith('***') and seg.endswith('***'):
+                    styled_segments.append((seg[3:-3], "Helvetica-Bold"))
+                else:
+                    styled_segments.append((seg, "Helvetica"))
+
+            current_x = x_margin
+            for text, font in styled_segments:
+                words = text.split(' ')
+                for word in words:
+                    word_width = c.stringWidth(word + ' ', font, 11)
+
+                    # Wrap to next line if necessary
+                    if current_x + word_width > width - x_margin:
+                        y_position -= line_height
+                        if y_position < 50:
+                            c.showPage()
+                            y_position = height - 50
+                        current_x = x_margin
+
+                    c.setFont(font, 11)
+                    c.drawString(current_x, y_position, word + ' ')
+                    current_x += word_width
+
             y_position -= line_height
-            continue
+            if y_position < 50:
+                c.showPage()
+                y_position = height - 50
 
-        # Break line into styled segments
-        segments = re.split(r'(\*\*\*.*?\*\*\*)', line)
-        styled_segments = []
-        for seg in segments:
-            if seg.startswith('***') and seg.endswith('***'):
-                styled_segments.append((seg[3:-3], "Helvetica-Bold"))
-            else:
-                styled_segments.append((seg, "Helvetica"))
-
-        current_x = x_margin
-        for text, font in styled_segments:
-            words = text.split(' ')
-            for word in words:
-                word_width = c.stringWidth(word + ' ', font, 11)
-
-                # Wrap to next line if necessary
-                if current_x + word_width > width - x_margin:
-                    y_position -= line_height
-                    if y_position < 50:
-                        c.showPage()
-                        y_position = height - 50
-                    current_x = x_margin
-
-                c.setFont(font, 11)
-                c.drawString(current_x, y_position, word + ' ')
-                current_x += word_width
-
-        y_position -= line_height
-        if y_position < 50:
-            c.showPage()
-            y_position = height - 50
-
-    c.save()
-    buffer.seek(0)
-    pdf_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+        c.save()
+        buffer.seek(0)
+        pdf_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    except Exception as e:
+        print("error while generating pdf from text",e)
     return {**state, "status": "complete", "assignment": pdf_base64}
 
 def generate_assignment_workflow(input_content: str, openrouter_api_key: str, assignmentorquiz: str, urls: Optional[List[str]] = None) -> dict:

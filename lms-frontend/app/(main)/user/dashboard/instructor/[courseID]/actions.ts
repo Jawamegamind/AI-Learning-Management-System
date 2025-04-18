@@ -34,7 +34,7 @@ export async function generateAssignmentOrQuiz(prompt: string, lectureUrls: stri
     });
 
     if (response.data.status === "success") {
-      return response.data.assignment;
+      return response.data;
     } else {
       throw new Error("Generation failed");
     }

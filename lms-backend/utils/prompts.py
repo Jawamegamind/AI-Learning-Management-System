@@ -37,7 +37,7 @@ def getmetaprompt(raw_prompt, context,option):
 
             1. 3–5 Multiple Choice Questions (MCQs) — clearly indicate the correct answer with reasoning.
             2. 2–3 True/False questions — also justify each answer briefly.
-            3. 1–2 Short Answer or Reasoning-based questions — prompt students to explain concepts or compare ideas in 1–3 sentences.
+            3. 4-5 Short Answer or Reasoning-based questions — prompt students to explain concepts or compare ideas in 1–3 sentences.
 
             Ensure the quiz focuses on **core concepts**, **theory**, and **understanding**, not implementation or coding.
 
@@ -82,10 +82,12 @@ def getgenerationprompt(prompt, option):
                - These should test **factual knowledge** of the ideas and should be MEDIUM difficulty.
 
             3. **Reasoning-Based or Short Answer Questions**
-               - Ask 3–4 conceptual or comparative / analytical questions.
+               - Ask 4–5 conceptual or comparative / analytical questions.
                - These should test **theoretical understanding** of the concepts and should be HARD difficulty
 
             Ensure questions are concept-focused and avoid code-level implementation unless it's conceptual (e.g., algorithm behavior, model choices, complexity tradeoffs).
+
+            DO NOT write the answers for any question of the quiz, it SHOULD BE UNSOLVED.
 
             Anything you want to be HIGHLIGHTED in the final file should be enclosed within 3 asterisks, example: ***MCQs***
 

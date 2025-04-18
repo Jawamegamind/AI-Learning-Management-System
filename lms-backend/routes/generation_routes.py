@@ -29,7 +29,8 @@ async def generate_assignment(request: AssignmentRequest):
 
         return {
             "status": "success",
-            "assignment": result["assignment"]
+            "assignment": result["assignment"],
+            "score": result['scores'][-1]
         }
 
     except Exception as e:
@@ -57,7 +58,8 @@ async def generate_quiz(request: QuizRequest):
 
         return {
             "status": "success",
-            "assignment": result["assignment"]
+            "assignment": result["assignment"],
+            "score": ""  #inapplicable as of now, since no feedback loop for quizzes yet
         }
 
     except Exception as e:

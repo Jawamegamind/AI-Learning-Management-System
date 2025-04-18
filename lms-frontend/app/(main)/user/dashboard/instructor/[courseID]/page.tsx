@@ -6,6 +6,7 @@ import { Box, Typography, Tabs, Tab, Grid2, Paper, List, ListItem, ListItemText,
 import { Delete, Download } from "@mui/icons-material";
 import { createClient } from "@/utils/supabase/client";
 import ResponsiveAppBar from "@/app/_components/navbar";
+import LoadingModal from '../../../../../_components/LoadingModal';
 import {fetchCourseDataFromID, generateFileEmbeddingsonUpload, generateAssignmentOrQuiz, summarizeLecture} from './actions';
 
 interface Course {
@@ -42,6 +43,7 @@ export default function CoursePage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generationStatus, setGenerationStatus] = useState<string>('');
+  const [loading, setLoading] = useState(false)
   const supabase = createClient();
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -95,16 +97,22 @@ export default function CoursePage() {
         });
       }, 1000);
 
-      const result = await generateAssignmentOrQuiz(
+      setLoading(true)
+      const score_and_assignment = await generateAssignmentOrQuiz(
         userprompt,
         selectedFilePaths as string[],
         option
       );
-      
+      setLoading(false)
+      if (option === 'assignment') {
+        alert(`The score evaluated for the assignment by the LLM was ${score_and_assignment.score}`)
+      }
+      const result = score_and_assignment.assignment
+
       clearInterval(progressInterval);
       setGenerationProgress(100);
       setGenerationStatus('Generation complete! Saving file...');
-      
+
       const folderType = option === 'quiz' ? 'quizzes' : 'assignments';
       if (result !== undefined) {
           let filename: string | null = "";
@@ -161,6 +169,7 @@ export default function CoursePage() {
     } catch (error) {
       console.error(`${option} generation error:`, error);
       alert(`Failed to generate ${option}`);
+      setLoading(false);
       setIsGenerating(false);
       setGenerationProgress(0);
       setGenerationStatus('');
@@ -264,7 +273,9 @@ export default function CoursePage() {
     }
 
     try {
+      setLoading(true)
       const result = await summarizeLecture(selectedLecture);
+      setLoading(false)
       console.log('Summary:', result);
       // TODO: Display the summary in a modal or new section
       setShowLectureSelector(false);
@@ -272,6 +283,7 @@ export default function CoursePage() {
       setSelectedLecture('');
     } catch (error) {
       console.error('Summarization error:', error);
+      setLoading(false);
       alert('Failed to generate summary');
     }
   };
@@ -280,7 +292,7 @@ export default function CoursePage() {
     try {
       const response = await fetch(fileUrl);
       if (!response.ok) throw new Error('Network response was not ok');
-      
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -625,6 +637,7 @@ export default function CoursePage() {
                     placeholder={`Enter instructions for generating a ${activeTool}...`}
                     sx={{ mb: 2 }}
                   />
+                  <LoadingModal open={loading} title={`Generating ${activeTool}`}/>
                 </Box>
                 {isGenerating && (
                   <Box sx={{ width: '100%', mb: 2 }}>
@@ -642,8 +655,8 @@ export default function CoursePage() {
                   </Box>
                 )}
                 <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
-                  <Button 
-                    variant="contained" 
+                  <Button
+                    variant="contained"
                     onClick={() => handleGenerateContent(activeTool as 'quiz' | 'assignment')}
                     disabled={!userprompt.trim() || isGenerating}
                   >
@@ -656,8 +669,8 @@ export default function CoursePage() {
                       'Generate'
                     )}
                   </Button>
-                  <Button 
-                    variant="outlined" 
+                  <Button
+                    variant="outlined"
                     onClick={() => {
                       setShowFileSelector(false);
                       setActiveTool(null);
@@ -669,7 +682,7 @@ export default function CoursePage() {
                       setGenerationStatus('');
                     }}
                     disabled={isGenerating}
-                  >
+                    >
                     Cancel
                   </Button>
                 </Box>
@@ -709,6 +722,7 @@ export default function CoursePage() {
               >
                 Summarize
               </Button>
+              <LoadingModal open={loading} title="Generating summary"/>
               <Button
                 variant="outlined"
                 onClick={() => {
