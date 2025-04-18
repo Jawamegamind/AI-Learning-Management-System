@@ -3,10 +3,13 @@
 import {useState, useLayoutEffect} from "react";
 // import axios from "axios";
 import { useParams } from "next/navigation";
-import { Box, Typography, Tabs, Tab, Grid2, Paper, List, ListItem, ListItemText, Divider, Button, Link } from "@mui/material";
+import { Box, Typography, Tabs, Tab, Grid2, Paper, List, ListItem, ListItemText, Divider, Button, Link, TextField, FormGroup, FormControlLabel, Checkbox } from "@mui/material";
 import { createClient } from "@/utils/supabase/client";
 import ResponsiveAppBar from "@/app/_components/navbar";
-import {fetchCourseDataFromID} from './actions';
+import jsPDF from "jspdf";
+import { Alert } from '@mui/material';
+import Snackbar, {SnackbarCloseReason} from '@mui/material/Snackbar';
+import {fetchCourseDataFromID, generateSummarization} from './actions';
 
 interface Course {
   id: number;
@@ -24,16 +27,25 @@ export default function CoursePage() {
   const { courseID } = useParams();
     const [tabIndex, setTabIndex] = useState(0);
     const [course, setCourse] = useState<Course | null>(null);
-    const [files, setFiles] = useState<{
-      assignments: FileItem[];
-      quizzes: FileItem[];
-      lectures: FileItem[];
-    }>({
-      assignments: [],
-      quizzes: [],
-      lectures: [],
-    });
-
+    const [activeTool, setActiveTool] = useState<null | 'summarize' | 'quiz' | 'assignment'>(null);
+    const [summarizationPrompt, setSummarizationPrompt] = useState("")
+    const [error, setError] = useState<string | null>(null);;
+    const [selectedSummarizationLectures, setSelectedSummarizationLectures] = useState<string[]>([]);
+    const [summarizationGenerating, setSummarizationGenerating] = useState(false);
+    const [generatedSummary, setGeneratedSummary] = useState<string | null>(null);
+    // const [files, setFiles] = useState<{
+    //   assignments: FileItem[];
+    //   quizzes: FileItem[];
+    //   lectures: FileItem[];
+    // }>({
+    //   assignments: [],
+    //   quizzes: [],
+    //   lectures: [],
+    // });
+    const [files, setFiles] = useState<FileItem[]>([]);
+    const [open, setOpen] = useState(false);
+    const [snackbarMessage, setSnackbarMessage] = useState('');
+    const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info' | 'warning'>('info');
 
     const supabase = createClient();
 
@@ -41,54 +53,77 @@ export default function CoursePage() {
       setTabIndex(newValue);
     };
 
+    const handleClick = (message: string, severity: 'success' | 'error' | 'info' | 'warning') => {
+      setSnackbarMessage(message);
+      setSnackbarSeverity(severity);
+      setOpen(true);
+    };
+
+    const handleClose = (
+        event?: React.SyntheticEvent | Event,
+        reason?: SnackbarCloseReason,
+    ) => {
+        if (reason === 'clickaway') {
+            return;
+        }
+        setOpen(false);
+    };
+
+    function downloadPDF(content: string) {
+      const doc = new jsPDF();
+      const lines = doc.splitTextToSize(content, 180); // wrap text
+      doc.text(lines, 10, 10);
+      doc.save("summary.pdf");
+    }
+
     useLayoutEffect(() => {
       const fetchCourse = async () => {
         // Fetching course details from the backend
-        const course = await fetchCourseDataFromID(courseID)
-        console.log("gotcourse",course)
+        if (!courseID) return;
+        const course = await fetchCourseDataFromID(courseID.toString());
         setCourse(course);
       };
 
       const fetchFiles = async () => {
-        const folders: Array<keyof typeof files> = ["assignments", "quizzes", "lectures"];
-        const result: typeof files = {
-          assignments: [],
-          quizzes: [],
-          lectures: [],
-        };
-
+        const folders = ["assignments", "quizzes", "lectures"];
+        const allFiles: FileItem[] = [];
+  
         for (const folder of folders) {
           const { data, error } = await supabase.storage.from("course-materials").list(`${courseID}/${folder}/`, {
             limit: 100,
             offset: 0,
             sortBy: { column: "name", order: "asc" },
           });
-
+  
           if (error) {
-            console.error(`Error fetching ${folder}:`, error.message);
+            console.error(`Failed to list files in ${folder}:`, error.message);
             continue;
           }
-
-          const items: FileItem[] = await Promise.all(
+  
+          const fileItems: FileItem[] = await Promise.all(
             (data || []).map(async (item) => {
-              const fullPath = `${courseID}/${folder}/${item.name}`;
+              const filePath = `${courseID}/${folder}/${item.name}`;
+  
               const { data: signedUrlData, error: urlError } = await supabase.storage
                 .from("course-materials")
-                .createSignedUrl(fullPath, 60 * 60);
-
+                .createSignedUrl(filePath, 60 * 60); // 1-hour expiry
+  
+              if (urlError) {
+                console.error(`Failed to create signed URL for ${filePath}:`, urlError.message);
+              }
+  
               return {
-                name: item.name,
+                name: `${folder}/${item.name}`, // include folder path
                 url: signedUrlData?.signedUrl ?? "#",
               };
             })
           );
-
-          result[folder] = items;
+  
+          allFiles.push(...fileItems);
         }
-
-        setFiles(result);
+  
+        setFiles(allFiles);
       };
-
 
       fetchCourse();
       fetchFiles();
@@ -148,32 +183,32 @@ export default function CoursePage() {
           <Box>
             <Typography variant="h6" gutterBottom>Resources</Typography>
 
-            {["lectures", "assignments", "quizzes"].map((section) => (
-              <Box key={section} mt={3}>
+            {["assignments", "quizzes", "lectures"].map((folder) => (
+              <Box key={folder} mb={4}>
                 <Typography variant="subtitle1" gutterBottom sx={{ textTransform: "capitalize" }}>
-                  {section}
+                  {folder}
                 </Typography>
+
+                {/* File List */}
                 <List>
-                  {files[section as keyof typeof files].length === 0 && (
-                    <ListItem>
-                      <ListItemText primary="No files available." />
-                    </ListItem>
-                  )}
-                  {files[section as keyof typeof files].map((file) => (
-                    <Box key={file.name}>
-                      <ListItem>
-                        <ListItemText
-                          primary={
-                            <Link href={file.url} target="_blank" rel="noopener noreferrer" underline="hover">
-                              {file.name}
-                            </Link>
-                          }
-                          secondary="Downloadable file"
-                        />
-                      </ListItem>
-                      <Divider />
-                    </Box>
-                  ))}
+                  {files.filter((f) => f.name.startsWith(`${folder}/`)).map((file, index, arr) => {
+                    const fileName = file.name.replace(`${folder}/`, "");
+                    return (
+                      <Box key={file.name}>
+                        <ListItem>
+                          <ListItemText
+                            primary={
+                              <Link href={file.url} target="_blank" rel="noopener noreferrer" underline="hover">
+                                {fileName}
+                              </Link>
+                            }
+                            secondary={`Uploaded to ${folder}`}
+                          />
+                        </ListItem>
+                        {index < arr.length - 1 && <Divider />}
+                      </Box>
+                    );
+                  })}
                 </List>
               </Box>
             ))}
@@ -201,15 +236,125 @@ export default function CoursePage() {
             <Typography variant="h6" gutterBottom>AI Tools</Typography>
             <Grid2 container spacing={2}>
               <Grid2 size={{ xs:12, sm:6, md:4 }}>
-                <Paper elevation={2} sx={{ p: 2 }}>
+              <Paper elevation={2} sx={{ p: 2 }}>
                   <Typography variant="subtitle1">Summarize Lecture</Typography>
-                  <Button fullWidth sx={{ mt: 1 }} variant="outlined">Start</Button>
+                  <Button
+                    fullWidth
+                    sx={{ mt: 1 }}
+                    variant="outlined"
+                    disabled={activeTool !== null && activeTool !== 'summarize'}
+                    onClick={() => setActiveTool(activeTool === 'summarize' ? null : 'summarize')}
+                  >
+                    {activeTool === 'summarize' ? "Close" : "Start"}
+                  </Button>
+
+                  {activeTool === 'summarize' && (
+                    <Box mt={2}>
+                      {/* Add summarize lecture input UI here */}
+                      {/* <Typography>Summarizing feature in progress...</Typography> */}
+                      <TextField
+                        fullWidth
+                        label="Please mention the specifics of how you want the lecture to be summarized"
+                        value={summarizationPrompt}
+                        onChange={(e) => setSummarizationPrompt(e.target.value)}
+                        multiline
+                        rows={3}
+                      />
+                      {error && (
+                        <Typography color="error" mt={1}>
+                          {error}
+                        </Typography>
+                      )}
+
+                      <FormGroup sx={{ mt: 2 }}>
+                        <Typography variant="subtitle2" gutterBottom>Select lectures to include:</Typography>
+                        {files
+                          .filter(f => f.name.startsWith("lectures/"))
+                          .map((file) => (
+                            <FormControlLabel
+                              key={file.name}
+                              control={
+                                <Checkbox
+                                  checked={selectedSummarizationLectures.includes(file.url)}
+                                  onChange={(e) => {
+                                    const checked = e.target.checked;
+                                    setSelectedSummarizationLectures(prev =>
+                                      checked
+                                        ? [...prev, file.url]
+                                        : prev.filter(url => url !== file.url)
+                                    );
+                                  }}
+                                />
+                              }
+                              label={file.name.replace("lectures/", "")}
+                            />
+                          ))}
+                      </FormGroup>
+                      <Button
+                        sx={{ mt: 2 }}
+                        variant="contained"
+                        onClick={async () => {
+                          if (summarizationPrompt.trim() === "") {
+                            setError("Please enter a prompt");
+                            return;
+                          }
+
+                          setSummarizationGenerating(true);
+                          setError(null);
+
+                          try {
+                            const result = await generateSummarization(summarizationPrompt, selectedSummarizationLectures);
+                            // console.log(result);
+                            setGeneratedSummary(result); // store the returned summary
+                            handleClick("Summarization generated successfully.", "success");
+                          } catch (err) {
+                            setError(err.message || "Failed to generate summary please try again.");
+                            handleClick("Failed to generate summary please try again.", "error");
+                          } finally {
+                            setSummarizationGenerating(false);
+                            // setActiveTool(null);
+                            // setSummarizationPrompt("");
+                            setSelectedSummarizationLectures([]);
+                            // setGeneratedSummary(null);
+                          }
+                        }}
+                      >
+                        {summarizationGenerating ? "Generating..." : "Generate"}
+                      </Button>
+
+                      {generatedSummary && (
+                        <Box mt={2}>
+                          <Typography variant="subtitle2">Generated Summary:</Typography>
+                          <Paper elevation={1} sx={{ p: 2, maxHeight: 300, overflowY: 'auto', whiteSpace: 'pre-wrap' }}>
+                            {generatedSummary}
+                          </Paper>
+                          <Button sx={{ mt: 2 }} variant="outlined" onClick={() => downloadPDF(generatedSummary)}>
+                            Download as PDF
+                          </Button>
+                        </Box>
+                      )}
+                    </Box>
+                  )}
                 </Paper>
               </Grid2>
             </Grid2>
           </Box>
         )}
       </Box>
+        <Snackbar
+          open={open}
+          autoHideDuration={6000}
+          onClose={handleClose}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        >
+          <Alert
+              onClose={handleClose}
+              severity={snackbarSeverity}
+              variant="filled"
+          >
+              {snackbarMessage}
+          </Alert>
+      </Snackbar>
     </Box>
   );
 }
