@@ -10,6 +10,7 @@ class AssignmentState(TypedDict):
     urls: Optional[List[str]]  # Optional URLs for document context
     option: str             # "quiz" or "assignment"
     scores: List[int]       #list of all scores
+    optimzed_query: str     # optimized query for rag after metaprocessing
 
 
 class AssignmentRequest(BaseModel):

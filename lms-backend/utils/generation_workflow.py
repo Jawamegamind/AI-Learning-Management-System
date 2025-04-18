@@ -15,9 +15,33 @@ from models.generation_model import AssignmentState
 from nbformat.v4 import new_notebook, new_code_cell, new_markdown_cell
 from .prompts import getmetaprompt, getgenerationprompt, getverificationprompt, COMPONENT_WEIGHTAGES
 
-
-# Initialize embedding model (adjust model as needed)
+# Initialize embedding model
 embedding_model = SentenceTransformer('thenlper/gte-base')
+
+# RAG query optimization prompt
+rag_query_optimization_system_prompt = """
+You are an expert in information retrieval and vector-based semantic search.
+
+Your job is to take a **messy, human-authored prompt** and extract from it a **precise, minimal query** that will retrieve only the most **relevant context** for solving the assignment.
+
+Focus on **what information is actually needed** to perform the task (definitions, algorithms, math, code examples, etc). Strip away instructional text, formatting details, and conversational fluff.
+
+You MUST:
+- Use exact technical phrasing when possible
+- Retain any important entities (e.g., "ResNet", "variational autoencoder", "KL divergence")
+- Avoid vague filler like "please", "as a student", "write an assignment"
+- Output a single sentence or question optimized for retrieval
+
+Example:
+
+Input:
+You are a TA for a course on transformers. Write an assignment where students have to implement multi-head attention from scratch, evaluate it on a toy dataset, and compare it with a PyTorch version.
+
+Optimized Query:
+Multi-head attention implementation and evaluation compared to PyTorch version
+
+Respond ONLY with the optimized query.
+"""
 
 def query_openrouter(prompt: str, api_key: str, max_length: int = 500, model: str = "meta-llama/llama-4-maverick:free") -> str:
     client = OpenAI(
@@ -29,11 +53,11 @@ def query_openrouter(prompt: str, api_key: str, max_length: int = 500, model: st
         messages=[{"role": "user", "content": prompt}]
     )
     try:
-      print("Completion choice Finish Reason",completion.choices[0].finish_reason)
-      return completion.choices[0].message.content
+        print("Completion choice Finish Reason", completion.choices[0].finish_reason)
+        return completion.choices[0].message.content
     except Exception as e:
-      print("api call to llm error", completion.error['message'])
-      return ""
+        print("api call to llm error", completion.error['message'])
+        return ""
 
 def extract_score(text: str) -> float:
     matchh = re.search(r"\[\[\[REVIEW_SCHEME\]\]\] = (\{.*\})", text)
@@ -50,15 +74,23 @@ def extract_score(text: str) -> float:
     score = sum(scores_dict[k] * v for k, v in COMPONENT_WEIGHTAGES.items())
     return score * 10
 
+def retrieval_node(state: AssignmentState, api_key: str) -> AssignmentState:
+    raw_prompt = state['input_content']
+    optimization_prompt = f"{rag_query_optimization_system_prompt}\n\nInput:\n{raw_prompt}\n\nOptimized Query:"
+    optimized_query = query_openrouter(optimization_prompt, api_key)
+    print("Optimized Query:", optimized_query)
+    return {**state, "optimized_query": optimized_query}
+
 def metaprompt_node(state: AssignmentState, api_key: str) -> AssignmentState:
     raw_prompt = state['input_content']
+    optimized_query = state.get('optimized_query', raw_prompt)  # Fallback to raw_prompt if optimized_query is missing
     urls = state.get('urls', None)
 
     # Initialize retriever
     retriever = Retriever()
 
-    # Generate embedding for input_content
-    query_embedding = embedding_model.encode(raw_prompt).tolist()
+    # Generate embedding for optimized_query
+    query_embedding = embedding_model.encode(optimized_query).tolist()
 
     # Fetch context using retriever
     context = ""
@@ -68,16 +100,17 @@ def metaprompt_node(state: AssignmentState, api_key: str) -> AssignmentState:
             relevant_doc_ids = retriever.get_document_ids_by_urls(urls)
             if relevant_doc_ids:
                 # Use filtered hybrid search to get relevant chunks
-                results = retriever.filtered_search(
+                results = retriever.filtered_hybrid_search(
+                    query_text=optimized_query,
                     query_embedding=query_embedding,
                     relevant_doc_ids=relevant_doc_ids,
-                    limit_rows=5  # Limit to avoid overwhelming prompt
+                    limit_rows=5
                 )
-                if len(results)==0:
-                  print("no relevant chunk found from the docs")
+                if len(results) == 0:
+                    print("no relevant chunk found from the docs")
                 else:
-                  print("relevant chunks found from docs")
-                  print(results)
+                    print("relevant chunks found from docs")
+                    print(results)
                 # Format context from results (id, content, embedding_id, similarity)
                 context = "\n".join([
                     f"Document Chunk (Similarity: {r['similarity']:.2f}): {r['content']}"
@@ -88,7 +121,7 @@ def metaprompt_node(state: AssignmentState, api_key: str) -> AssignmentState:
         else:
             # Use hybrid search for general context
             results = retriever.hybrid_search(
-                query_text=raw_prompt,
+                query_text=optimized_query,
                 query_embedding=query_embedding,
                 limit_rows=5
             )
@@ -102,21 +135,21 @@ def metaprompt_node(state: AssignmentState, api_key: str) -> AssignmentState:
         print(f"Retriever error: {e}")
         context = "Failed to retrieve context."
 
-    # Augment metaprompt with retrieved context
-    print("metaprompt node call",state['option'])
-    metaprompt = getmetaprompt(raw_prompt,context,state['option'])
+    # Augment metaprompt with retrieved context, using raw_prompt
+    print("metaprompt node call", state['option'])
+    metaprompt = getmetaprompt(raw_prompt, context, state['option'])
     output = query_openrouter(metaprompt, api_key)
-    print("[METAPROMPT]========",output)
+    print("[METAPROMPT]========", output)
     if output.lower().startswith("invalid prompt"):
         return {**state, "assignment": output, "status": "failed"}
     return {**state, "assignment": output, "status": "pending", "attempts": 0}
 
 def generate_assignment_node(state: AssignmentState, api_key: str) -> AssignmentState:
     prompt = state["assignment"]
-    gen_prompt = getgenerationprompt(prompt,state['option'])
+    gen_prompt = getgenerationprompt(prompt, state['option'])
     assignment = query_openrouter(gen_prompt, api_key)
     state["assignment"] = assignment
-    print("[ASSIGNMENT]========",assignment)
+    print("[ASSIGNMENT]========", assignment)
     return {**state, "assignment": assignment}
 
 def verify_assignment_node(state: AssignmentState, api_key: str) -> AssignmentState:
@@ -124,7 +157,7 @@ def verify_assignment_node(state: AssignmentState, api_key: str) -> AssignmentSt
         return {**state, "status": "verified"}
 
     feedback_prompt = "This is the first draft so give full marks (10/10)" if state['feedback'] == "" else f"Feedback: {state['feedback']}. If the given feedback has NOT been FULLY incorporated, PENALIZE HARSHLY."
-    print("######################################feedback_prompt",feedback_prompt)
+    print("######################################feedback_prompt", feedback_prompt)
     critique_prompt = getverificationprompt(state['assignment'], feedback_prompt)
     review = query_openrouter(critique_prompt, api_key)
     state['feedback'] = review
@@ -135,7 +168,7 @@ def verify_assignment_node(state: AssignmentState, api_key: str) -> AssignmentSt
     not_improving = len(state['scores']) >= 3 and state['scores'][-1] == state['scores'][-2] == state['scores'][-3]
     state['scores'].append(score)
 
-    if score >= 90.0 or state['attempts'] >=5 or not_improving :
+    if score >= 90.0 or state['attempts'] >= 5 or not_improving:
         return {**state, "status": "verified"}
 
     return {**state, "status": "pending", "attempts": state["attempts"] + 1}
@@ -225,19 +258,20 @@ def convert_to_pdf_node(state: AssignmentState) -> AssignmentState:
     pdf_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
     return {**state, "status": "complete", "assignment": pdf_base64}
 
-
 def generate_assignment_workflow(input_content: str, openrouter_api_key: str, assignmentorquiz: str, urls: Optional[List[str]] = None) -> dict:
     workflow = StateGraph(AssignmentState)
 
-    #Nodes
+    # Nodes
+    workflow.add_node("retrieval", lambda s: retrieval_node(s, openrouter_api_key))
     workflow.add_node("metaprompt", lambda s: metaprompt_node(s, openrouter_api_key))
     workflow.add_node("generate_assignment", lambda s: generate_assignment_node(s, openrouter_api_key))
     workflow.add_node("verify_assignment", lambda s: verify_assignment_node(s, openrouter_api_key))
     workflow.add_node("convert_to_notebook", convert_to_notebook_node)
     workflow.add_node("convert_to_pdf", convert_to_pdf_node)
 
-    #Edges
-    workflow.add_edge(START, "metaprompt")
+    # Edges
+    workflow.add_edge(START, "retrieval")
+    workflow.add_edge("retrieval", "metaprompt")
     workflow.add_conditional_edges("metaprompt", lambda s: s["status"], {
         "failed": END,
         "pending": "generate_assignment"
@@ -271,7 +305,8 @@ def generate_assignment_workflow(input_content: str, openrouter_api_key: str, as
         "status": "pending",
         "attempts": 0,
         "urls": urls,
-        "option":assignmentorquiz,
-        "scores": []
+        "option": assignmentorquiz,
+        "scores": [],
+        "optimized_query": ""
     }
     return graph.invoke(initial_state)

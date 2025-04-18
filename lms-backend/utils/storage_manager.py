@@ -10,7 +10,8 @@ from langchain_community.document_loaders import (
     PyPDFLoader,
     TextLoader,
     Docx2txtLoader,
-    UnstructuredMarkdownLoader
+    UnstructuredMarkdownLoader,
+    NotebookLoader
 )
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import requests
