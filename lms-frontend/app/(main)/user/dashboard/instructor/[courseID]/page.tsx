@@ -3,7 +3,7 @@
 import {useState, useLayoutEffect} from "react";
 import { useParams } from "next/navigation";
 import { Box, Typography, Tabs, Tab, Grid2, Paper, List, ListItem, ListItemText, Divider, Button, Link, IconButton, FormGroup, FormControlLabel, Checkbox, TextField, InputLabel, Select, MenuItem, FormControl } from "@mui/material";
-import { Delete } from "@mui/icons-material";
+import { Delete, Download } from "@mui/icons-material";
 import { createClient } from "@/utils/supabase/client";
 import ResponsiveAppBar from "@/app/_components/navbar";
 import {fetchCourseDataFromID, generateFileEmbeddingsonUpload, generateAssignmentOrQuiz, summarizeLecture} from './actions';
@@ -39,7 +39,6 @@ export default function CoursePage() {
   const [userprompt, setPrompt] = useState<string>('');
   const [selectedLecture, setSelectedLecture] = useState<string>('');
   const [showLectureSelector, setShowLectureSelector] = useState(false);
-
   const supabase = createClient();
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -248,6 +247,26 @@ export default function CoursePage() {
     }
   };
 
+  const handleDownloadFile = async (fileUrl: string, fileName: string) => {
+    try {
+      const response = await fetch(fileUrl);
+      if (!response.ok) throw new Error('Network response was not ok');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Download error:', error);
+      alert('Failed to download file');
+    }
+  };
+
   useLayoutEffect(() => {
     const fetchCourse = async () => {
       // Fetching course details from the backend
@@ -435,13 +454,22 @@ export default function CoursePage() {
                       <Box key={file.name}>
                         <ListItem
                           secondaryAction={
-                            <IconButton
-                              edge="end"
-                              aria-label="delete"
-                              onClick={() => handleDeleteFile(file.name)}
-                            >
-                              <Delete/>
-                            </IconButton>
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                              <IconButton
+                                edge="end"
+                                aria-label="download"
+                                onClick={() => handleDownloadFile(file.url, fileName)}
+                              >
+                                <Download />
+                              </IconButton>
+                              <IconButton
+                                edge="end"
+                                aria-label="delete"
+                                onClick={() => handleDeleteFile(file.name)}
+                              >
+                                <Delete/>
+                              </IconButton>
+                            </Box>
                           }
                         >
                           <ListItemText
