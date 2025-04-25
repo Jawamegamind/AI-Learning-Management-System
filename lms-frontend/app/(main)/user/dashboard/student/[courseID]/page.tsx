@@ -91,6 +91,46 @@ export default function CoursePage() {
     
       doc.save("summary.pdf");
     }
+
+    async function uploadSummaryToSupabase(summaryText: string) {
+      const doc = new jsPDF();
+      doc.setFontSize(10);
+      const lines = doc.splitTextToSize(summaryText, 180);
+      const margin = 10;
+      const lineHeight = 10;
+      const pageHeight = doc.internal.pageSize.getHeight() - margin;
+      let y = margin;
+    
+      lines.forEach((line) => {
+        if (y + lineHeight > pageHeight) {
+          doc.addPage();
+          y = margin;
+        }
+        doc.text(line, margin, y);
+        y += lineHeight;
+      });
+    
+      const pdfBlob = doc.output("blob");
+    
+      const fileName = `summary_${Date.now()}.pdf`;
+      const filePath = `${courseID}/summarizations/${fileName}`;
+    
+      const { error } = await supabase.storage
+        .from("course-materials")
+        .upload(filePath, pdfBlob, {
+          cacheControl: "3600",
+          upsert: true,
+          contentType: "application/pdf",
+        });
+    
+      if (error) {
+        console.error("Upload failed:", error.message);
+        handleClick("Failed to upload summary PDF.", "error");
+      } else {
+        handleClick("Summary uploaded successfully!", "success");
+        // Optionally refetch file list here
+      }
+    }
     
 
     useLayoutEffect(() => {
@@ -102,7 +142,7 @@ export default function CoursePage() {
       };
 
       const fetchFiles = async () => {
-        const folders = ["assignments", "quizzes", "lectures"];
+        const folders = ["assignments", "quizzes", "lectures", "summarizations"];
         const allFiles: FileItem[] = [];
   
         for (const folder of folders) {
@@ -200,7 +240,7 @@ export default function CoursePage() {
           <Box>
             <Typography variant="h6" gutterBottom>Resources</Typography>
 
-            {["assignments", "quizzes", "lectures"].map((folder) => (
+            {["assignments", "quizzes", "lectures", "summarizations"].map((folder) => (
               <Box key={folder} mb={4}>
                 <Typography variant="subtitle1" gutterBottom sx={{ textTransform: "capitalize" }}>
                   {folder}
@@ -323,6 +363,7 @@ export default function CoursePage() {
                             const result = await generateSummarization(summarizationPrompt, selectedSummarizationLectures);
                             // console.log(result);
                             setGeneratedSummary(result); // store the returned summary
+                            await uploadSummaryToSupabase(result); // Upload to Supabase
                             handleClick("Summarization generated successfully.", "success");
                           } catch (err) {
                             setError(err.message || "Failed to generate summary please try again.");
