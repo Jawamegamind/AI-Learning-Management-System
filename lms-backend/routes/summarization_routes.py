@@ -58,23 +58,52 @@ def preprocess_text(text):
     text = text.replace('\n', ' ')
     return text
 
-def query_openrouter_api(text, max_length=200, model="deepseek/deepseek-r1-zero:free"):
-    meta_prompt = (
-        "You are an expert educational summarizer. Your task is to read the following lecture content carefully "
-        "and generate a clear and concise summary that captures all key ideas, main points, and concepts. "
-        "Use simple language where possible so students can understand it easily. Avoid repetition and unnecessary detail.\n\n"
-        f"Lecture Content:\n{text}\n\nSummary:"
-    )
+# def query_openrouter_api(text, model="deepseek/deepseek-r1-zero:free"):
+#     meta_prompt = (
+#         "You are an expert educational summarizer. Your task is to read the following lecture content carefully "
+#         "and generate a clear and concise summary that captures all key ideas, main points, and concepts. "
+#         "Use simple language where possible so students can understand it easily. Avoid repetition and unnecessary detail.\n\n"
+#         f"Lecture Content:\n{text}\n\nSummary:"
+#     )
 
+#     payload = {
+#         "model": model,
+#         "messages": [
+#             {
+#                 "role": "user",
+#                 "content": meta_prompt
+#             }
+#         ],
+#         # "max_tokens": max_length
+#     }
+
+#     response = requests.post(API_URL, headers=headers, json=payload)
+#     print("The response is:", response.json())
+
+#     if response.status_code == 200:
+#         try:
+#             response_data = response.json()
+#             if "choices" in response_data and len(response_data["choices"]) > 0:
+#                 return response_data["choices"][0]["message"]["content"]
+#             else:
+#                 print("Unexpected response structure:", response_data)
+#                 return None
+#         except json.JSONDecodeError as e:
+#             print(f"Error decoding JSON response: {e}")
+#             return None
+#     else:
+#         print(f'API Error: {response.status_code} - {response.text}')
+#         return None
+
+def query_openrouter_api(user_prompt, model="meta-llama/llama-4-maverick:free"):
     payload = {
         "model": model,
         "messages": [
             {
                 "role": "user",
-                "content": meta_prompt
+                "content": user_prompt
             }
-        ],
-        # "max_tokens": max_length
+        ]
     }
 
     response = requests.post(API_URL, headers=headers, json=payload)
@@ -135,8 +164,17 @@ async def generate_summarization(request: SummarizationRequest):
     preprocessed_text = preprocess_text(combined_text)
     print("Preprocessed text", preprocessed_text)
 
+    # Combine the custom prompt with extracted content
+    full_prompt = (
+        f"{request.summarization_prompt.strip()}\n\n"
+        f"Lecture Content:\n{preprocessed_text}\n\nSummary:"
+    )
+
+    # Generate the summary using the user-defined prompt
+    summary = query_openrouter_api(full_prompt, model="meta-llama/llama-4-maverick:free")
+
     # Generate the summary
-    summary = query_openrouter_api(preprocessed_text, max_length=1000, model="meta-llama/llama-4-maverick:free")
+    # summary = query_openrouter_api(preprocessed_text, model="meta-llama/llama-4-maverick:free")
     print("Summary generated", summary) 
 
     return {"summary": summary}

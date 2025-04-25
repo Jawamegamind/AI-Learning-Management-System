@@ -71,10 +71,27 @@ export default function CoursePage() {
 
     function downloadPDF(content: string) {
       const doc = new jsPDF();
-      const lines = doc.splitTextToSize(content, 180); // wrap text
-      doc.text(lines, 10, 10);
+      const margin = 10;
+      const lineHeight = 10;
+      const pageHeight = doc.internal.pageSize.getHeight() - margin;
+
+      doc.setFontSize(10); // Set font size to 10pt
+      const lines = doc.splitTextToSize(content, 180); // wrap text to fit page width
+    
+      let y = margin;
+    
+      lines.forEach((line: string | string[]) => {
+        if (y + lineHeight > pageHeight) {
+          doc.addPage();
+          y = margin;
+        }
+        doc.text(line, margin, y);
+        y += lineHeight;
+      });
+    
       doc.save("summary.pdf");
     }
+    
 
     useLayoutEffect(() => {
       const fetchCourse = async () => {
