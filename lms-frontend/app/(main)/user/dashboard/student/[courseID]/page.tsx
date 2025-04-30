@@ -11,16 +11,23 @@ import { Alert } from '@mui/material';
 import Snackbar, {SnackbarCloseReason} from '@mui/material/Snackbar';
 import {fetchCourseDataFromID, generateSummarization} from './actions';
 
-interface Course {
-  id: number;
-  title: string;
-  description: string;
-  // Add other properties of the course object if needed
+interface User {
+  user_id: string;
+  name: string;
+  email: string;
+  role: string;
 }
 
 interface FileItem {
   name: string;
   url: string;
+}
+
+interface Course {
+  id: number;
+  title: string;
+  description: string;
+  // Add other properties of the course object if needed
 }
 
 export default function CoursePage() {
@@ -46,6 +53,7 @@ export default function CoursePage() {
     const [open, setOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
     const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info' | 'warning'>('info');
+    const [userAuth, setUserAuth] = useState<any>(null);
 
     const supabase = createClient();
 
@@ -92,7 +100,24 @@ export default function CoursePage() {
       doc.save("summary.pdf");
     }
 
+    useLayoutEffect(() => {
+      const fetchUser = async () => {
+        const { data, error } = await supabase.auth.getUser();
+        if (error) {
+          console.error("Error fetching user:", error.message);
+        } else {
+          setUserAuth(data.user);
+        }
+      };
+      fetchUser();
+    }, []);
+
     async function uploadSummaryToSupabase(summaryText: string) {
+      if (!userAuth?.id) {
+        handleClick("User not authenticated", "error");
+        return;
+      }
+
       const doc = new jsPDF();
       doc.setFontSize(10);
       const lines = doc.splitTextToSize(summaryText, 180);
@@ -101,7 +126,7 @@ export default function CoursePage() {
       const pageHeight = doc.internal.pageSize.getHeight() - margin;
       let y = margin;
     
-      lines.forEach((line) => {
+      lines.forEach((line: string) => {
         if (y + lineHeight > pageHeight) {
           doc.addPage();
           y = margin;
@@ -113,7 +138,7 @@ export default function CoursePage() {
       const pdfBlob = doc.output("blob");
     
       const fileName = `summary_${Date.now()}.pdf`;
-      const filePath = `${courseID}/summarizations/${fileName}`;
+      const filePath = `${courseID}/summarizations/${userAuth.id}/${fileName}`;
     
       const { error } = await supabase.storage
         .from("course-materials")
@@ -128,25 +153,84 @@ export default function CoursePage() {
         handleClick("Failed to upload summary PDF.", "error");
       } else {
         handleClick("Summary uploaded successfully!", "success");
-        // Optionally refetch file list here
+        // Refetch files to show the new summary
+        const fetchFiles = async () => {
+          if (!userAuth?.id) return;
+
+          const folders = ["assignments", "quizzes", "lectures", "summarizations"];
+          const allFiles: FileItem[] = [];
+    
+          for (const folder of folders) {
+            let path = `${courseID}/${folder}`;
+            
+            // For summarizations, we need to look in the user's specific directory
+            if (folder === "summarizations") {
+              path = `${path}/${userAuth.id}`;
+            }
+
+            const { data, error } = await supabase.storage.from("course-materials").list(path, {
+              limit: 100,
+              offset: 0,
+              sortBy: { column: "name", order: "asc" },
+            });
+    
+            if (error) {
+              console.error(`Failed to list files in ${folder}:`, error.message);
+              continue;
+            }
+    
+            const fileItems = await Promise.all<FileItem | null>(
+              (data || []).map(async (item) => {
+                const filePath = `${path}/${item.name}`;
+    
+                const { data: signedUrlData, error: urlError } = await supabase.storage
+                  .from("course-materials")
+                  .createSignedUrl(filePath, 60 * 60); // 1-hour expiry
+    
+                if (urlError) {
+                  console.error(`Failed to create signed URL for ${filePath}:`, urlError.message);
+                  return null;
+                }
+    
+                return {
+                  name: `${folder}/${item.name}`, // include folder path
+                  url: signedUrlData?.signedUrl ?? "#",
+                };
+              })
+            );
+    
+            allFiles.push(...fileItems.filter((item): item is FileItem => item !== null));
+          }
+    
+          setFiles(allFiles);
+        };
+        fetchFiles();
       }
     }
     
 
     useLayoutEffect(() => {
       const fetchCourse = async () => {
-        // Fetching course details from the backend
         if (!courseID) return;
         const course = await fetchCourseDataFromID(courseID.toString());
         setCourse(course);
       };
 
       const fetchFiles = async () => {
+        if (!userAuth?.id) return;
+
         const folders = ["assignments", "quizzes", "lectures", "summarizations"];
         const allFiles: FileItem[] = [];
   
         for (const folder of folders) {
-          const { data, error } = await supabase.storage.from("course-materials").list(`${courseID}/${folder}/`, {
+          let path = `${courseID}/${folder}`;
+          
+          // For summarizations, we need to look in the user's specific directory
+          if (folder === "summarizations") {
+            path = `${path}/${userAuth.id}`;
+          }
+
+          const { data, error } = await supabase.storage.from("course-materials").list(path, {
             limit: 100,
             offset: 0,
             sortBy: { column: "name", order: "asc" },
@@ -157,9 +241,9 @@ export default function CoursePage() {
             continue;
           }
   
-          const fileItems: FileItem[] = await Promise.all(
+          const fileItems = await Promise.all<FileItem | null>(
             (data || []).map(async (item) => {
-              const filePath = `${courseID}/${folder}/${item.name}`;
+              const filePath = `${path}/${item.name}`;
   
               const { data: signedUrlData, error: urlError } = await supabase.storage
                 .from("course-materials")
@@ -167,6 +251,7 @@ export default function CoursePage() {
   
               if (urlError) {
                 console.error(`Failed to create signed URL for ${filePath}:`, urlError.message);
+                return null;
               }
   
               return {
@@ -176,7 +261,7 @@ export default function CoursePage() {
             })
           );
   
-          allFiles.push(...fileItems);
+          allFiles.push(...fileItems.filter((item): item is FileItem => item !== null));
         }
   
         setFiles(allFiles);
@@ -184,7 +269,7 @@ export default function CoursePage() {
 
       fetchCourse();
       fetchFiles();
-    }, [courseID]);
+    }, [courseID, userAuth?.id]);
 
   return (
     <Box>
@@ -361,19 +446,15 @@ export default function CoursePage() {
 
                           try {
                             const result = await generateSummarization(summarizationPrompt, selectedSummarizationLectures);
-                            // console.log(result);
-                            setGeneratedSummary(result); // store the returned summary
-                            await uploadSummaryToSupabase(result); // Upload to Supabase
+                            setGeneratedSummary(result);
+                            await uploadSummaryToSupabase(result);
                             handleClick("Summarization generated successfully.", "success");
-                          } catch (err) {
-                            setError(err.message || "Failed to generate summary please try again.");
+                          } catch (err: any) {
+                            setError(err?.message || "Failed to generate summary please try again.");
                             handleClick("Failed to generate summary please try again.", "error");
                           } finally {
                             setSummarizationGenerating(false);
-                            // setActiveTool(null);
-                            // setSummarizationPrompt("");
                             setSelectedSummarizationLectures([]);
-                            // setGeneratedSummary(null);
                           }
                         }}
                       >
