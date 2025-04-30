@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from database.supabase_db import create_supabase_client
-from models.summarization_model import SummarizationRequest
+from models.summarization_model import SummarizationRequest, FlashcardsRequest
 import pypdf
 import os
 import requests
@@ -162,7 +162,7 @@ async def generate_summarization(request: SummarizationRequest):
 
     # Preprocess the extracted text
     preprocessed_text = preprocess_text(combined_text)
-    print("Preprocessed text", preprocessed_text)
+    # print("Preprocessed text", preprocessed_text)
 
     # Combine the custom prompt with extracted content
     full_prompt = (
@@ -178,4 +178,57 @@ async def generate_summarization(request: SummarizationRequest):
     print("Summary generated", summary) 
 
     return {"summary": summary}
+
+@summarization_router.post("/generate_flashcards")
+async def generate_flashcards(request: FlashcardsRequest):
+    print("Flashcards request received at backend", request)
+
+    combined_text = ""
+
+    for url in request.lecture_urls:
+        try:
+            # Download the file from the Supabase signed URL
+            response = requests.get(url)
+            response.raise_for_status()
+
+            # Create a temporary file and write the content
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                tmp.write(response.content)
+                tmp_path = tmp.name
+
+            print(f"Downloaded lecture file to temp path: {tmp_path}")
+
+            # Extract text from the downloaded file
+            text = extract_text_from_file(tmp_path)
+            combined_text += text + "\n"
+
+            # Optionally delete the temp file
+            os.remove(tmp_path)
+
+        except Exception as e:
+            print(f"Error processing file {url}: {e}")
+            continue
+
+    if not combined_text.strip():
+        return {"flashcards": "No text could be extracted from the provided files."}
+
+    # Preprocess the extracted text
+    preprocessed_text = preprocess_text(combined_text)
+    print("Preprocessed text", preprocessed_text)
+
+    # Combine the custom prompt with extracted content
+    full_prompt = (
+        f"Create flashcards for the following topics: {request.flashcards_prompt.strip()}\n\n"
+        f"Based on this lecture content:\n{preprocessed_text}\n\n"
+        "Format each flashcard as:\n"
+        "Q: [Question]\n"
+        "A: [Answer]\n\n"
+        "Generate flashcards that cover key concepts, definitions, and important points."
+    )
+
+    # Generate the flashcards using the user-defined prompt
+    flashcards = query_openrouter_api(full_prompt, model="meta-llama/llama-4-maverick:free")
+    print("Flashcards generated", flashcards) 
+
+    return {"flashcards": flashcards}
     

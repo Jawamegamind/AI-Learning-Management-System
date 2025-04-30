@@ -9,7 +9,7 @@ import ResponsiveAppBar from "@/app/_components/navbar";
 import jsPDF from "jspdf";
 import { Alert } from '@mui/material';
 import Snackbar, {SnackbarCloseReason} from '@mui/material/Snackbar';
-import {fetchCourseDataFromID, generateSummarization} from './actions';
+import {fetchCourseDataFromID, generateSummarization, generateFlashcards} from './actions';
 
 interface User {
   user_id: string;
@@ -34,12 +34,16 @@ export default function CoursePage() {
   const { courseID } = useParams();
     const [tabIndex, setTabIndex] = useState(0);
     const [course, setCourse] = useState<Course | null>(null);
-    const [activeTool, setActiveTool] = useState<null | 'summarize' | 'quiz' | 'assignment'>(null);
-    const [summarizationPrompt, setSummarizationPrompt] = useState("")
-    const [error, setError] = useState<string | null>(null);;
+    const [activeTool, setActiveTool] = useState<null | 'summarize' | 'quiz' | 'assignment' | 'flashcards'>(null);
+    const [summarizationPrompt, setSummarizationPrompt] = useState("");
+    const [flashcardsPrompt, setFlashcardsPrompt] = useState("");
+    const [error, setError] = useState<string | null>(null);
     const [selectedSummarizationLectures, setSelectedSummarizationLectures] = useState<string[]>([]);
+    const [selectedFlashcardsLectures, setSelectedFlashcardsLectures] = useState<string[]>([]);
     const [summarizationGenerating, setSummarizationGenerating] = useState(false);
+    const [flashcardsGenerating, setFlashcardsGenerating] = useState(false);
     const [generatedSummary, setGeneratedSummary] = useState<string | null>(null);
+    const [generatedFlashcards, setGeneratedFlashcards] = useState<string | null>(null);
     // const [files, setFiles] = useState<{
     //   assignments: FileItem[];
     //   quizzes: FileItem[];
@@ -208,6 +212,101 @@ export default function CoursePage() {
       }
     }
     
+    async function uploadFlashcardsToSupabase(flashcardsText: string) {
+      if (!userAuth?.id) {
+        handleClick("User not authenticated", "error");
+        return;
+      }
+
+      const doc = new jsPDF();
+      doc.setFontSize(10);
+      const lines = doc.splitTextToSize(flashcardsText, 180);
+      const margin = 10;
+      const lineHeight = 10;
+      const pageHeight = doc.internal.pageSize.getHeight() - margin;
+      let y = margin;
+    
+      lines.forEach((line: string) => {
+        if (y + lineHeight > pageHeight) {
+          doc.addPage();
+          y = margin;
+        }
+        doc.text(line, margin, y);
+        y += lineHeight;
+      });
+    
+      const pdfBlob = doc.output("blob");
+    
+      const fileName = `flashcards_${Date.now()}.pdf`;
+      const filePath = `${courseID}/flashcards/${userAuth.id}/${fileName}`;
+    
+      const { error } = await supabase.storage
+        .from("course-materials")
+        .upload(filePath, pdfBlob, {
+          cacheControl: "3600",
+          upsert: true,
+          contentType: "application/pdf",
+        });
+    
+      if (error) {
+        console.error("Upload failed:", error.message);
+        handleClick("Failed to upload flashcards PDF.", "error");
+      } else {
+        handleClick("Flashcards uploaded successfully!", "success");
+        // Refetch files to show the new flashcards
+        const fetchFiles = async () => {
+          if (!userAuth?.id) return;
+
+          const folders = ["assignments", "quizzes", "lectures", "summarizations", "flashcards"];
+          const allFiles: FileItem[] = [];
+    
+          for (const folder of folders) {
+            let path = `${courseID}/${folder}`;
+            
+            // For user-specific content, we need to look in the user's specific directory
+            if (folder === "summarizations" || folder === "flashcards") {
+              path = `${path}/${userAuth.id}`;
+            }
+
+            const { data, error } = await supabase.storage.from("course-materials").list(path, {
+              limit: 100,
+              offset: 0,
+              sortBy: { column: "name", order: "asc" },
+            });
+    
+            if (error) {
+              console.error(`Failed to list files in ${folder}:`, error.message);
+              continue;
+            }
+    
+            const fileItems = await Promise.all<FileItem | null>(
+              (data || []).map(async (item) => {
+                const filePath = `${path}/${item.name}`;
+    
+                const { data: signedUrlData, error: urlError } = await supabase.storage
+                  .from("course-materials")
+                  .createSignedUrl(filePath, 60 * 60); // 1-hour expiry
+    
+                if (urlError) {
+                  console.error(`Failed to create signed URL for ${filePath}:`, urlError.message);
+                  return null;
+                }
+    
+                return {
+                  name: `${folder}/${item.name}`, // include folder path
+                  url: signedUrlData?.signedUrl ?? "#",
+                };
+              })
+            );
+    
+            allFiles.push(...fileItems.filter((item): item is FileItem => item !== null));
+          }
+    
+          setFiles(allFiles);
+        };
+        fetchFiles();
+      }
+    }
 
     useLayoutEffect(() => {
       const fetchCourse = async () => {
@@ -219,14 +318,14 @@ export default function CoursePage() {
       const fetchFiles = async () => {
         if (!userAuth?.id) return;
 
-        const folders = ["assignments", "quizzes", "lectures", "summarizations"];
+        const folders = ["assignments", "quizzes", "lectures", "summarizations", "flashcards"];
         const allFiles: FileItem[] = [];
   
         for (const folder of folders) {
           let path = `${courseID}/${folder}`;
           
-          // For summarizations, we need to look in the user's specific directory
-          if (folder === "summarizations") {
+          // For user-specific content, we need to look in the user's specific directory
+          if (folder === "summarizations" || folder === "flashcards") {
             path = `${path}/${userAuth.id}`;
           }
 
@@ -325,7 +424,7 @@ export default function CoursePage() {
           <Box>
             <Typography variant="h6" gutterBottom>Resources</Typography>
 
-            {["assignments", "quizzes", "lectures", "summarizations"].map((folder) => (
+            {["assignments", "quizzes", "lectures", "summarizations", "flashcards"].map((folder) => (
               <Box key={folder} mb={4}>
                 <Typography variant="subtitle1" gutterBottom sx={{ textTransform: "capitalize" }}>
                   {folder}
@@ -378,7 +477,7 @@ export default function CoursePage() {
             <Typography variant="h6" gutterBottom>AI Tools</Typography>
             <Grid2 container spacing={2}>
               <Grid2 size={{ xs:12, sm:6, md:4 }}>
-              <Paper elevation={2} sx={{ p: 2 }}>
+                <Paper elevation={2} sx={{ p: 2 }}>
                   <Typography variant="subtitle1">Summarize Lecture</Typography>
                   <Button
                     fullWidth
@@ -392,8 +491,6 @@ export default function CoursePage() {
 
                   {activeTool === 'summarize' && (
                     <Box mt={2}>
-                      {/* Add summarize lecture input UI here */}
-                      {/* <Typography>Summarizing feature in progress...</Typography> */}
                       <TextField
                         fullWidth
                         label="Please mention the specifics of how you want the lecture to be summarized"
@@ -468,6 +565,104 @@ export default function CoursePage() {
                             {generatedSummary}
                           </Paper>
                           <Button sx={{ mt: 2 }} variant="outlined" onClick={() => downloadPDF(generatedSummary)}>
+                            Download as PDF
+                          </Button>
+                        </Box>
+                      )}
+                    </Box>
+                  )}
+                </Paper>
+              </Grid2>
+
+              <Grid2 size={{ xs:12, sm:6, md:4 }}>
+                <Paper elevation={2} sx={{ p: 2 }}>
+                  <Typography variant="subtitle1">Generate Flashcards</Typography>
+                  <Button
+                    fullWidth
+                    sx={{ mt: 1 }}
+                    variant="outlined"
+                    disabled={activeTool !== null && activeTool !== 'flashcards'}
+                    onClick={() => setActiveTool(activeTool === 'flashcards' ? null : 'flashcards')}
+                  >
+                    {activeTool === 'flashcards' ? "Close" : "Start"}
+                  </Button>
+
+                  {activeTool === 'flashcards' && (
+                    <Box mt={2}>
+                      <TextField
+                        fullWidth
+                        label="Please mention the topics or concepts you want flashcards for"
+                        value={flashcardsPrompt}
+                        onChange={(e) => setFlashcardsPrompt(e.target.value)}
+                        multiline
+                        rows={3}
+                      />
+                      {error && (
+                        <Typography color="error" mt={1}>
+                          {error}
+                        </Typography>
+                      )}
+
+                      <FormGroup sx={{ mt: 2 }}>
+                        <Typography variant="subtitle2" gutterBottom>Select lectures to include:</Typography>
+                        {files
+                          .filter(f => f.name.startsWith("lectures/"))
+                          .map((file) => (
+                            <FormControlLabel
+                              key={file.name}
+                              control={
+                                <Checkbox
+                                  checked={selectedFlashcardsLectures.includes(file.url)}
+                                  onChange={(e) => {
+                                    const checked = e.target.checked;
+                                    setSelectedFlashcardsLectures(prev =>
+                                      checked
+                                        ? [...prev, file.url]
+                                        : prev.filter(url => url !== file.url)
+                                    );
+                                  }}
+                                />
+                              }
+                              label={file.name.replace("lectures/", "")}
+                            />
+                          ))}
+                      </FormGroup>
+                      <Button
+                        sx={{ mt: 2 }}
+                        variant="contained"
+                        onClick={async () => {
+                          if (flashcardsPrompt.trim() === "") {
+                            setError("Please enter a prompt");
+                            return;
+                          }
+
+                          setFlashcardsGenerating(true);
+                          setError(null);
+
+                          try {
+                            const result = await generateFlashcards(flashcardsPrompt, selectedFlashcardsLectures);
+                            setGeneratedFlashcards(result);
+                            await uploadFlashcardsToSupabase(result);
+                            handleClick("Flashcards generated successfully.", "success");
+                          } catch (err: any) {
+                            setError(err?.message || "Failed to generate flashcards please try again.");
+                            handleClick("Failed to generate flashcards please try again.", "error");
+                          } finally {
+                            setFlashcardsGenerating(false);
+                            setSelectedFlashcardsLectures([]);
+                          }
+                        }}
+                      >
+                        {flashcardsGenerating ? "Generating..." : "Generate"}
+                      </Button>
+
+                      {generatedFlashcards && (
+                        <Box mt={2}>
+                          <Typography variant="subtitle2">Generated Flashcards:</Typography>
+                          <Paper elevation={1} sx={{ p: 2, maxHeight: 300, overflowY: 'auto', whiteSpace: 'pre-wrap' }}>
+                            {generatedFlashcards}
+                          </Paper>
+                          <Button sx={{ mt: 2 }} variant="outlined" onClick={() => downloadPDF(generatedFlashcards)}>
                             Download as PDF
                           </Button>
                         </Box>

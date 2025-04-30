@@ -22,3 +22,12 @@ export async function generateSummarization(summarizationPrompt: string, selecte
     });
     return response.data.summary;
 }
+
+export async function generateFlashcards(flashcardsPrompt: string, selectedFlashcardsLectures: string[]) {
+    console.log(flashcardsPrompt, selectedFlashcardsLectures);
+    const response = await axios.post(`http://localhost:8000/api/summarization/generate_flashcards`, {
+        flashcards_prompt: flashcardsPrompt,
+        lecture_urls: selectedFlashcardsLectures
+    });
+    return response.data.flashcards;
+}
