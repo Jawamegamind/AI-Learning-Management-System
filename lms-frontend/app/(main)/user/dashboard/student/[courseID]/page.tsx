@@ -393,6 +393,7 @@ export default function CoursePage() {
           <Tab label="Resources" />
           <Tab label="Assignments" />
           <Tab label="AI Tools" />
+          <Tab label="Submissions" />
         </Tabs>
       </Box>
 
@@ -674,7 +675,129 @@ export default function CoursePage() {
             </Grid2>
           </Box>
         )}
+         <Box p={4}>
+        {/* Submissions Tab */}
+        {tabIndex === 5 && (
+          <Box>
+            <Typography variant="h6" gutterBottom>Submissions</Typography>
+
+            {/* Filter files for assignments and quizzes */}
+            {["assignments", "quizzes"].map((folder) => (
+              <Box key={folder} mb={4}>
+                <Typography variant="subtitle1" gutterBottom sx={{ textTransform: "capitalize" }}>
+                  {folder}
+                </Typography>
+
+                {/* File List */}
+                <List>
+                  {files.filter((f) => f.name.startsWith(`${folder}/`)).map((file, index, arr) => {
+                    const fileName = file.name.replace(`${folder}/`, "");
+                    return (
+                      <Box key={file.name}>
+                        <ListItem>
+                          <ListItemText
+                            primary={
+                              <Link href={file.url} target="_blank" rel="noopener noreferrer" underline="hover">
+                                {fileName}
+                              </Link>
+                            }
+                            secondary={`Uploaded to ${folder}`}
+                          />
+                          {/* Upload Button */}
+                          <Button
+                            variant="contained"
+                            component="label"
+                            sx={{ ml: 2 }}
+                          >
+                            Upload
+                            <input
+                              type="file"
+                              hidden
+                              onChange={async (e) => {
+                                if (!e.target.files || e.target.files.length === 0) return;
+                                const selectedFile = e.target.files[0];
+                                const filePath = `${courseID}/${folder}/${userAuth.id}/${selectedFile.name}`;
+
+                                const { error } = await supabase.storage
+                                  .from("course-materials")
+                                  .upload(filePath, selectedFile, {
+                                    cacheControl: "3600",
+                                    upsert: true,
+                                    contentType: selectedFile.type,
+                                  });
+
+                                if (error) {
+                                  console.error("File upload failed:", error.message);
+                                  alert("Failed to upload file. Please try again.");
+                                } else {
+                                  alert("File uploaded successfully!");
+                                  // Optionally, refetch files to update the list
+                                  const fetchFiles = async () => {
+                                    if (!userAuth?.id) return;
+
+                                    const folders = ["assignments", "quizzes", "lectures", "summarizations", "flashcards"];
+                                    const allFiles: FileItem[] = [];
+
+                                    for (const folder of folders) {
+                                      let path = `${courseID}/${folder}`;
+
+                                      if (folder === "summarizations" || folder === "flashcards") {
+                                        path = `${path}/${userAuth.id}`;
+                                      }
+
+                                      const { data, error } = await supabase.storage.from("course-materials").list(path, {
+                                        limit: 100,
+                                        offset: 0,
+                                        sortBy: { column: "name", order: "asc" },
+                                      });
+
+                                      if (error) {
+                                        console.error(`Failed to list files in ${folder}:`, error.message);
+                                        continue;
+                                      }
+
+                                      const fileItems = await Promise.all<FileItem | null>(
+                                        (data || []).map(async (item) => {
+                                          const filePath = `${path}/${item.name}`;
+
+                                          const { data: signedUrlData, error: urlError } = await supabase.storage
+                                            .from("course-materials")
+                                            .createSignedUrl(filePath, 60 * 60); // 1-hour expiry
+
+                                          if (urlError) {
+                                            console.error(`Failed to create signed URL for ${filePath}:`, urlError.message);
+                                            return null;
+                                          }
+
+                                          return {
+                                            name: `${folder}/${item.name}`, // include folder path
+                                            url: signedUrlData?.signedUrl ?? "#",
+                                          };
+                                        })
+                                      );
+
+                                      allFiles.push(...fileItems.filter((item): item is FileItem => item !== null));
+                                    }
+
+                                    setFiles(allFiles);
+                                  };
+                                  fetchFiles();
+                                }
+                              }}
+                            />
+                          </Button>
+                        </ListItem>
+                        {index < arr.length - 1 && <Divider />}
+                      </Box>
+                    );
+                  })}
+                </List>
+              </Box>
+            ))}
+          </Box>
+        )}
       </Box>
+    </Box>
         <Snackbar
           open={open}
           autoHideDuration={6000}
