@@ -12,6 +12,7 @@ import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
 import { Alert } from '@mui/material';
 import Snackbar, {SnackbarCloseReason} from '@mui/material/Snackbar';
+import LoadingModal from '../../_components/LoadingModal';
 import { register } from './actions';
 
 // interface User {
@@ -22,9 +23,10 @@ import { register } from './actions';
 
 export default function SignIn() {
     const [open, setOpen] = React.useState(false);
+    const [loading, setLoading] = React.useState(false);
     const [snackbarMessage, setSnackbarMessage] = React.useState('');
     const [snackbarSeverity, setSnackbarSeverity] = React.useState<'success' | 'error' | 'info' | 'warning'>('info');
-    
+
     const handleClick = (message: string, severity: 'success' | 'error' | 'info' | 'warning') => {
         setSnackbarMessage(message);
         setSnackbarSeverity(severity);
@@ -48,7 +50,7 @@ export default function SignIn() {
         const name = formData.get('name') as string;
         const email = formData.get('email') as string;
         const password = formData.get('password') as string;
-        console.log({ name, email, password }); 
+        console.log({ name, email, password });
 
         // Check for empty fields
         if (!name || !email || !password) {
@@ -58,7 +60,9 @@ export default function SignIn() {
 
         // Using the register action
         try {
+            setLoading(true);
             const response = await register(formData);
+            setLoading(false);
             // handleClick("Registration successful", "success");
 
             // Check the message returned in the response
@@ -148,9 +152,11 @@ export default function SignIn() {
                         fullWidth
                         variant="contained"
                         sx={{ mt: 3, mb: 2 }}
+                        disabled={loading}
                     >
                         Sign Up
                     </Button>
+                    <LoadingModal open={loading} title="Creating your account"/>
                 </Box>
             </Paper>
             <Box mt={2} textAlign="center">

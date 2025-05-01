@@ -12,15 +12,17 @@ import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
 import { Alert } from '@mui/material';
 import Snackbar, {SnackbarCloseReason} from '@mui/material/Snackbar';
+import LoadingModal from '../../_components/LoadingModal';
 // import { useRouter } from 'next/navigation';
 import {login} from './actions';
 
 
 export default function SignIn() {
     const [open, setOpen] = React.useState(false);
+    const [loading, setLoading] = React.useState(false);
     const [snackbarMessage, setSnackbarMessage] = React.useState('');
     const [snackbarSeverity, setSnackbarSeverity] = React.useState<'success' | 'error' | 'info' | 'warning'>('info');
-    
+
     const handleClick = (message: string, severity: 'success' | 'error' | 'info' | 'warning') => {
         setSnackbarMessage(message);
         setSnackbarSeverity(severity);
@@ -54,7 +56,9 @@ export default function SignIn() {
 
         // Using the login action
         try {
+            setLoading(true);
             await login(formData);
+            setLoading(false);
         } catch (error) {
             console.error('Error:', error);
             handleClick("Login failed", "error");
@@ -96,9 +100,11 @@ export default function SignIn() {
                         fullWidth
                         variant="contained"
                         sx={{ mt: 3, mb: 2 }}
+                        disabled={loading}
                     >
                         Sign In
                     </Button>
+                    <LoadingModal open={loading} title="Logging in"/>
                     <Box display="flex" justifyContent="center">
                         <Link href="/forgot-password" variant="body2">
                             Forgot password?

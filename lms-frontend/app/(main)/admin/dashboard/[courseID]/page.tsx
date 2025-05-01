@@ -100,7 +100,7 @@ export default function CoursePage() {
     };
 
     const fetchFiles = async () => {
-      const folders = ["assignments", "quizzes", "lectures"];
+      const folders = ["assignments", "quizzes", "lectures", "summarizations"];
       const allFiles: FileItem[] = [];
 
       for (const folder of folders) {
@@ -199,7 +199,7 @@ export default function CoursePage() {
           <Box>
             <Typography variant="h6" gutterBottom>Resources</Typography>
 
-            {["assignments", "quizzes", "lectures"].map((folder) => (
+            {["assignments", "quizzes", "lectures", "summarizations"].map((folder) => (
               <Box key={folder} mb={4}>
                 <Typography variant="subtitle1" gutterBottom sx={{ textTransform: "capitalize" }}>
                   {folder}

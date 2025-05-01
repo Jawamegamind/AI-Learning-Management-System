@@ -26,12 +26,12 @@ class Retriever:
         Returns list of (id, content, embedding_id, similarity, text_rank) tuples.
         """
         query_embedding = self._convert_embedding_to_list(query_embedding)
-        
+
         # Preprocess query_text to create tsquery string (e.g., 'term1:* | term2:* | term3:*')
         stop_words = {'i', 'want', 'to', 'an', 'on', 'the', 'a', 'and', 'or'}
         words = [word for word in re.sub(r'[^\w\s]', '', query_text).lower().split() if word not in stop_words]
         ts_query = ' | '.join(f'{word}:*' for word in words) if words else '*:*'
-        
+
         query = {
             'query_text': ts_query,
             'query_embedding': query_embedding,
@@ -39,7 +39,7 @@ class Retriever:
             'limit_rows': limit_rows,
             'offset_rows': offset_rows
         }
-        print("Query", query)
+        # print("Query", query)
         response = self.supabase.rpc(
             'filtered_hybrid_search_chunks',
             {
@@ -51,7 +51,7 @@ class Retriever:
             }
         ).execute()
         print("filtered_hybrid_search resp:", response)
-        
+
         # Fallback to embedding-only search if no results
         if not response.data:
             print("No chunks found. Falling back to embedding-only search.")
@@ -61,7 +61,7 @@ class Retriever:
                 limit_rows=limit_rows,
                 offset_rows=offset_rows
             )
-        
+
         return [(r['id'], r['content'], r['embedding_id'], r['similarity'], r['text_rank']) for r in response.data]
 
     def filtered_search(
@@ -110,19 +110,19 @@ class Retriever:
         Returns list of (id, content, embedding_id, similarity, text_rank) tuples.
         """
         query_embedding = self._convert_embedding_to_list(query_embedding)
-        
+
         # Preprocess query_text to create tsquery string (e.g., 'term1:* | term2:* | term3:*')
         stop_words = {'i', 'want', 'to', 'an', 'on', 'the', 'a', 'and', 'or'}
         words = [word for word in re.sub(r'[^\w\s]', '', query_text).lower().split() if word not in stop_words]
         ts_query = ' | '.join(f'{word}:*' for word in words) if words else '*:*'
-        
+
         query = {
             'query_text': ts_query,
             'query_embedding': query_embedding,
             'limit_rows': limit_rows,
             'offset_rows': offset_rows
         }
-        print("Query", query)
+        # print("Query", query)
         response = self.supabase.rpc(
             'hybrid_search_chunks',
             {
@@ -133,7 +133,7 @@ class Retriever:
             }
         ).execute()
         print("hybrid_search resp:", response)
-        
+
         # Fallback to embedding-only search if no results
         if not response.data:
             print("No chunks found. Falling back to embedding-only search.")
@@ -142,7 +142,7 @@ class Retriever:
                 limit_rows=limit_rows,
                 offset_rows=offset_rows
             )
-        
+
         return [(r['id'], r['content'], r['embedding_id'], r['similarity'], r['text_rank']) for r in response.data]
 
     def search_chunks(

@@ -22,7 +22,6 @@ export async function generateFileEmbeddingsonUpload(courseId: string, filePath:
 }
 
 export async function generateAssignmentOrQuiz(prompt: string, lectureUrls: string[], option: string) {
-
   try {
     const endpoint = option === "assignment"
     ? "http://localhost:8000/api/generation/generate-assignment"
@@ -35,7 +34,7 @@ export async function generateAssignmentOrQuiz(prompt: string, lectureUrls: stri
     });
 
     if (response.data.status === "success") {
-      return response.data.assignment;
+      return response.data;
     } else {
       throw new Error("Generation failed");
     }
@@ -44,33 +43,34 @@ export async function generateAssignmentOrQuiz(prompt: string, lectureUrls: stri
     throw error;
   }
 
+  // TO TEST FOR SUCCESSFUL UPLOAD OF .IPYNB ASSIGNMENT FORMAT
   // return {
-    //   "cells": [
-      //     {
-        //       "cell_type": "markdown",
-        //       "metadata": {},
-        //       "source": [
-          //         "# Hello Jupyter\n",
-          //         "This is a markdown cell."
-          //       ]
-          //     },
-          //     {
-            //       "cell_type": "code",
-            //       "execution_count": null,
-            //       "metadata": {},
-            //       "outputs": [],
-            //       "source": [
-              //         "print(\"Hello from code cell!\")"
-              //       ]
-              //     }
-              //   ],
-              //   "metadata": {
-                //     "kernelspec": {
-                  //       "display_name": "Python 3",
-//       "language": "python",
-//       "name": "python3"
-//     },
-//     "language_info": {
+  //     "cells": [
+  //         {
+  //             "cell_type": "markdown",
+  //             "metadata": {},
+  //             "source": [
+  //                 "# Hello Jupyter\n",
+  //                 "This is a markdown cell."
+  //               ]
+  //             },
+  //             {
+  //                 "cell_type": "code",
+  //                 "execution_count": null,
+  //                 "metadata": {},
+  //                 "outputs": [],
+  //                 "source": [
+  //                     "print(\"Hello from code cell!\")"
+  //                   ]
+  //                 }
+  //               ],
+  //               "metadata": {
+  //                   "kernelspec": {
+  //                       "display_name": "Python 3",
+  //     "language": "python",
+  //     "name": "python3"
+  //   },
+  //   "language_info": {
   //       "name": "python",
   //       "version": "3.8"
   //     }

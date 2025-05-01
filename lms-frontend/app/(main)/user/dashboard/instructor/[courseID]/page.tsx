@@ -2,10 +2,11 @@
 
 import {useState, useLayoutEffect} from "react";
 import { useParams } from "next/navigation";
-import { Box, Typography, Tabs, Tab, Grid2, Paper, List, ListItem, ListItemText, Divider, Button, Link, IconButton, FormGroup, FormControlLabel, Checkbox, TextField, InputLabel, Select, MenuItem, FormControl } from "@mui/material";
-import { Delete } from "@mui/icons-material";
+import { Box, Typography, Tabs, Tab, Grid2, Paper, List, ListItem, ListItemText, Divider, Button, Link, IconButton, FormGroup, FormControlLabel, Checkbox, TextField, InputLabel, Select, MenuItem, FormControl, LinearProgress, CircularProgress } from "@mui/material";
+import { Delete, Download } from "@mui/icons-material";
 import { createClient } from "@/utils/supabase/client";
 import ResponsiveAppBar from "@/app/_components/navbar";
+import LoadingModal from '../../../../../_components/LoadingModal';
 import {fetchCourseDataFromID, generateFileEmbeddingsonUpload, generateAssignmentOrQuiz, summarizeLecture} from './actions';
 
 interface Course {
@@ -33,12 +34,16 @@ export default function CoursePage() {
   const [course, setCourse] = useState<Course | null>(null);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [selectedFilePaths, setSelectedFilePaths] = useState<string[]>([]);
   const [showFileSelector, setShowFileSelector] = useState(false);
   const [activeTool, setActiveTool] = useState<'quiz' | 'assignment' | 'summarize' | null>(null);
   const [userprompt, setPrompt] = useState<string>('');
   const [selectedLecture, setSelectedLecture] = useState<string>('');
   const [showLectureSelector, setShowLectureSelector] = useState(false);
-
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [generationStatus, setGenerationStatus] = useState<string>('');
+  const [loading, setLoading] = useState(false)
   const supabase = createClient();
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -55,6 +60,16 @@ export default function CoursePage() {
     });
   };
 
+  const handleFilePathSelection = (filePath: string) => {
+    setSelectedFilePaths(prev => {
+      if (prev.includes(filePath)) {
+        return prev.filter(path => path !== filePath);
+      } else {
+        return [...prev, filePath];
+      }
+    });
+  };
+
   const handleGenerateContent = async (option: 'quiz' | 'assignment') => {
     // if (selectedFiles.length === 0) {
     //   alert('Please select at least one file');
@@ -66,12 +81,38 @@ export default function CoursePage() {
       return;
     }
 
+    setIsGenerating(true);
+    setGenerationProgress(0);
+    setGenerationStatus('Starting generation...');
+
     try {
-      const result = await generateAssignmentOrQuiz(
+      // Simulate progress updates
+      const progressInterval = setInterval(() => {
+        setGenerationProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 1000);
+
+      setLoading(true)
+      const score_and_assignment = await generateAssignmentOrQuiz(
         userprompt,
-        selectedFiles as string[],
+        selectedFilePaths as string[],
         option
       );
+      setLoading(false)
+      if (option === 'assignment') {
+        alert(`The score evaluated for the assignment by the LLM was ${score_and_assignment.score}`)
+      }
+      const result = score_and_assignment.assignment
+
+      clearInterval(progressInterval);
+      setGenerationProgress(100);
+      setGenerationStatus('Generation complete! Saving file...');
+
       const folderType = option === 'quiz' ? 'quizzes' : 'assignments';
       if (result !== undefined) {
           let filename: string | null = "";
@@ -82,28 +123,56 @@ export default function CoursePage() {
             }
           }
           console.log(`${option.charAt(0).toUpperCase() + option.slice(1)}: saving to ${folderType}`, result);
-          const path = `${courseID}/${folderType}/${filename}.ipynb`;
+          if (option === 'quiz'){
+            const path = `${courseID}/${folderType}/${filename}.pdf`;
 
-          const { data, error } = await supabase.storage
-            .from('course-materials')
-            .upload(path, JSON.stringify(result), {
-              contentType: 'application/json',
-              upsert: true, // Overwrites if the file already exists
-            });
+            // Decode base64 to binary data (if you used base64 encoding)
+            const pdfBuffer = Uint8Array.from(atob(result), c => c.charCodeAt(0));
 
-          if (error) {
-            console.error('Upload failed:', error.message);
-            throw new Error(`Upload failed: ${error.message}`);
+            const { data, error } = await supabase.storage
+              .from('course-materials')
+              .upload(path, pdfBuffer, {
+                contentType: 'application/pdf',
+                upsert: true, // Overwrites if the file already exists
+              });
+
+            if (error) {
+              console.error('Upload failed:', error.message);
+              throw new Error(`Upload failed: ${error.message}`);
+            }
+
+          } else {  //'assignment'
+            const path = `${courseID}/${folderType}/${filename}.ipynb`;
+
+            const { data, error } = await supabase.storage
+              .from('course-materials')
+              .upload(path, JSON.stringify(result), {
+                contentType: 'application/json',
+                upsert: true, // Overwrites if the file already exists
+              });
+
+            if (error) {
+              console.error('Upload failed:', error.message);
+              throw new Error(`Upload failed: ${error.message}`);
+            }
           }
       }
       // TODO: Display the result in a modal or new section
       setShowFileSelector(false);
       setActiveTool(null);
       setSelectedFiles([]);
+      setSelectedFilePaths([]);
       setPrompt('');
+      setIsGenerating(false);
+      setGenerationProgress(0);
+      setGenerationStatus('');
     } catch (error) {
       console.error(`${option} generation error:`, error);
       alert(`Failed to generate ${option}`);
+      setLoading(false);
+      setIsGenerating(false);
+      setGenerationProgress(0);
+      setGenerationStatus('');
     }
   };
 
@@ -156,7 +225,7 @@ export default function CoursePage() {
   };
 
   const fetchFiles = async () => {
-    const folders = ["assignments", "quizzes", "lectures"];
+    const folders = ["assignments", "quizzes", "lectures", "summarizations"];
     const allFiles: FileItem[] = [];
 
     for (const folder of folders) {
@@ -194,6 +263,7 @@ export default function CoursePage() {
     }
 
     setFiles(allFiles);
+    // console.log(allFiles)
   };
 
   const handleSummarizeLecture = async () => {
@@ -203,7 +273,9 @@ export default function CoursePage() {
     }
 
     try {
+      setLoading(true)
       const result = await summarizeLecture(selectedLecture);
+      setLoading(false)
       console.log('Summary:', result);
       // TODO: Display the summary in a modal or new section
       setShowLectureSelector(false);
@@ -211,7 +283,28 @@ export default function CoursePage() {
       setSelectedLecture('');
     } catch (error) {
       console.error('Summarization error:', error);
+      setLoading(false);
       alert('Failed to generate summary');
+    }
+  };
+
+  const handleDownloadFile = async (fileUrl: string, fileName: string) => {
+    try {
+      const response = await fetch(fileUrl);
+      if (!response.ok) throw new Error('Network response was not ok');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Download error:', error);
+      alert('Failed to download file');
     }
   };
 
@@ -321,7 +414,7 @@ export default function CoursePage() {
           <Box>
             <Typography variant="h6" gutterBottom>Resources</Typography>
 
-            {["assignments", "quizzes", "lectures"].map((folder) => (
+            {["assignments", "quizzes", "lectures", "summarizations"].map((folder) => (
               <Box key={folder} mb={4}>
                 <Typography variant="subtitle1" gutterBottom sx={{ textTransform: "capitalize" }}>
                   {folder}
@@ -402,13 +495,22 @@ export default function CoursePage() {
                       <Box key={file.name}>
                         <ListItem
                           secondaryAction={
-                            <IconButton
-                              edge="end"
-                              aria-label="delete"
-                              onClick={() => handleDeleteFile(file.name)}
-                            >
-                              <Delete/>
-                            </IconButton>
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                              <IconButton
+                                edge="end"
+                                aria-label="download"
+                                onClick={() => handleDownloadFile(file.url, fileName)}
+                              >
+                                <Download />
+                              </IconButton>
+                              <IconButton
+                                edge="end"
+                                aria-label="delete"
+                                onClick={() => handleDeleteFile(file.name)}
+                              >
+                                <Delete/>
+                              </IconButton>
+                            </Box>
                           }
                         >
                           <ListItemText
@@ -512,7 +614,10 @@ export default function CoursePage() {
                       control={
                         <Checkbox
                           checked={selectedFiles.includes(file.url)}
-                          onChange={() => handleFileSelection(file.url)}
+                          onChange={() => {
+                            handleFileSelection(file.url)
+                            handleFilePathSelection(`${courseID}/`+file.name)
+                          }}
                         />
                       }
                       label={file.name}
@@ -532,14 +637,37 @@ export default function CoursePage() {
                     placeholder={`Enter instructions for generating a ${activeTool}...`}
                     sx={{ mb: 2 }}
                   />
+                  <LoadingModal open={loading} title={`Generating ${activeTool}`}/>
                 </Box>
+                {isGenerating && (
+                  <Box sx={{ width: '100%', mb: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <Box sx={{ width: '100%', mr: 1 }}>
+                        <LinearProgress variant="determinate" value={generationProgress} />
+                      </Box>
+                      <Box sx={{ minWidth: 35 }}>
+                        <Typography variant="body2" color="text.secondary">{`${Math.round(generationProgress)}%`}</Typography>
+                      </Box>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary" align="center">
+                      {generationStatus}
+                    </Typography>
+                  </Box>
+                )}
                 <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
                   <Button
                     variant="contained"
                     onClick={() => handleGenerateContent(activeTool as 'quiz' | 'assignment')}
-                    disabled={!userprompt.trim()}
+                    disabled={!userprompt.trim() || isGenerating}
                   >
-                    Generate
+                    {isGenerating ? (
+                      <>
+                        <CircularProgress size={24} sx={{ mr: 1 }} />
+                        Generating...
+                      </>
+                    ) : (
+                      'Generate'
+                    )}
                   </Button>
                   <Button
                     variant="outlined"
@@ -547,9 +675,14 @@ export default function CoursePage() {
                       setShowFileSelector(false);
                       setActiveTool(null);
                       setSelectedFiles([]);
+                      setSelectedFilePaths([]);
                       setPrompt('');
+                      setIsGenerating(false);
+                      setGenerationProgress(0);
+                      setGenerationStatus('');
                     }}
-                  >
+                    disabled={isGenerating}
+                    >
                     Cancel
                   </Button>
                 </Box>
@@ -589,6 +722,7 @@ export default function CoursePage() {
               >
                 Summarize
               </Button>
+              <LoadingModal open={loading} title="Generating summary"/>
               <Button
                 variant="outlined"
                 onClick={() => {
