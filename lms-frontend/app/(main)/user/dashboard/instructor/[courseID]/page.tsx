@@ -353,45 +353,102 @@ export default function CoursePage() {
   };
 
   const fetchFiles = async () => {
-    const folders = ["assignments", "quizzes", "lectures", "summarizations"];
+    const folders = ["assignments", "quizzes", "lectures", "summarizations", "flashcards"];
     const allFiles: FileItem[] = [];
 
     for (const folder of folders) {
-      const { data, error } = await supabase.storage.from("course-materials").list(`${courseID}/${folder}/`, {
-        limit: 100,
-        offset: 0,
-        sortBy: { column: "name", order: "asc" },
-      });
+      let path = `${courseID}/${folder}`;
+      
+      // For user-specific content, we need to list all user directories
+      if (folder === "summarizations" || folder === "flashcards") {
+        // First list all user directories
+        const { data: userDirs, error: dirError } = await supabase.storage
+          .from("course-materials")
+          .list(path);
 
-      if (error) {
-        console.error(`Failed to list files in ${folder}:`, error.message);
-        continue;
-      }
+        if (dirError) {
+          console.error(`Failed to list user directories in ${folder}:`, dirError.message);
+          continue;
+        }
 
-      const fileItems: FileItem[] = await Promise.all(
-        (data || []).map(async (item) => {
-          const filePath = `${courseID}/${folder}/${item.name}`;
-
-          const { data: signedUrlData, error: urlError } = await supabase.storage
+        // For each user directory, list their files
+        for (const userDir of userDirs || []) {
+          const userPath = `${path}/${userDir.name}`;
+          const { data, error } = await supabase.storage
             .from("course-materials")
-            .createSignedUrl(filePath, 60 * 60); // 1-hour expiry
+            .list(userPath, {
+              limit: 100,
+              offset: 0,
+              sortBy: { column: "name", order: "asc" },
+            });
 
-          if (urlError) {
-            console.error(`Failed to create signed URL for ${filePath}:`, urlError.message);
+          if (error) {
+            console.error(`Failed to list files in ${userPath}:`, error.message);
+            continue;
           }
 
-          return {
-            name: `${folder}/${item.name}`, // include folder path
-            url: signedUrlData?.signedUrl ?? "#",
-          };
-        })
-      );
+          const fileItems = await Promise.all<FileItem | null>(
+            (data || []).map(async (item) => {
+              const filePath = `${userPath}/${item.name}`;
 
-      allFiles.push(...fileItems);
+              const { data: signedUrlData, error: urlError } = await supabase.storage
+                .from("course-materials")
+                .createSignedUrl(filePath, 60 * 60); // 1-hour expiry
+
+              if (urlError) {
+                console.error(`Failed to create signed URL for ${filePath}:`, urlError.message);
+                return null;
+              }
+
+              return {
+                name: `${folder}/${userDir.name}/${item.name}`, // include user directory in path
+                url: signedUrlData?.signedUrl ?? "#",
+              };
+            })
+          );
+
+          allFiles.push(...fileItems.filter((item): item is FileItem => item !== null));
+        }
+      } else {
+        // For non-user-specific content, list files directly
+        const { data, error } = await supabase.storage
+          .from("course-materials")
+          .list(path, {
+            limit: 100,
+            offset: 0,
+            sortBy: { column: "name", order: "asc" },
+          });
+
+        if (error) {
+          console.error(`Failed to list files in ${folder}:`, error.message);
+          continue;
+        }
+
+        const fileItems = await Promise.all<FileItem | null>(
+          (data || []).map(async (item) => {
+            const filePath = `${path}/${item.name}`;
+
+            const { data: signedUrlData, error: urlError } = await supabase.storage
+              .from("course-materials")
+              .createSignedUrl(filePath, 60 * 60); // 1-hour expiry
+
+            if (urlError) {
+              console.error(`Failed to create signed URL for ${filePath}:`, urlError.message);
+              return null;
+            }
+
+            return {
+              name: `${folder}/${item.name}`, // include folder path
+              url: signedUrlData?.signedUrl ?? "#",
+            };
+          })
+        );
+
+        allFiles.push(...fileItems.filter((item): item is FileItem => item !== null));
+      }
     }
 
     setFiles(allFiles);
-    // console.log(allFiles)
   };
 
   const handleSummarizeLecture = async () => {
@@ -619,6 +676,11 @@ export default function CoursePage() {
                 <List>
                   {files.filter((f) => f.name.startsWith(`${folder}/`)).map((file, index, arr) => {
                     const fileName = file.name.replace(`${folder}/`, "");
+                    // For user-specific content, show the user ID in the secondary text
+                    const isUserSpecific = folder === "summarizations" || folder === "flashcards";
+                    const userInfo = isUserSpecific ? ` (User: ${fileName.split('/')[0]})` : '';
+                    const displayName = isUserSpecific ? fileName.split('/').slice(1).join('/') : fileName;
+
                     return (
                       <Box key={file.name}>
                         <ListItem
@@ -644,10 +706,10 @@ export default function CoursePage() {
                           <ListItemText
                             primary={
                               <Link href={file.url} target="_blank" rel="noopener noreferrer" underline="hover">
-                                {fileName}
+                                {displayName}
                               </Link>
                             }
-                            secondary={`Uploaded to ${folder}`}
+                            secondary={`Uploaded to ${folder}${userInfo}`}
                           />
                         </ListItem>
                         {index < arr.length - 1 && <Divider />}
