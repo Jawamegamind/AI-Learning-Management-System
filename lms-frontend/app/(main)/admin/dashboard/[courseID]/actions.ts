@@ -9,28 +9,79 @@ export async function fetchCourseDataFromID(courseId: string) {
     return response.data.course
 }
 
+export async function generateFileEmbeddingsonUpload(courseId: string, filePath: string, signedUrl: string) {
+    // console.log(`Generating document and chunk level embeddings for new file ${filePath} in course ${courseId} signedUrl ${signedUrl}`)
 
-export async function generateAssignmentOrQuiz(prompt: string, lectureUrls:string[], option: string) {
+    const response = await axios.post(
+      `http://localhost:8000/api/courses/process_file?courseId=${courseId}&filePath=${filePath}&signedUrl=${encodeURIComponent(signedUrl)}`
+    )
 
-    // option can be "assignment" or "quiz"
+    console.log("The backend's response to generating embeddings is", response.data)
+
+    return response.data
+}
+
+export async function generateAssignmentOrQuiz(prompt: string, lectureUrls: string[], option: string) {
+  try {
     console.log(prompt, lectureUrls, option)
-    return "thanks"
-    
-    // const response = await fetch('http://localhost:8000/api/generation/generate-assignment/', {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //   },
-    //   body: JSON.stringify({ prompt }),
-    // });
+    const endpoint = option === "assignment"
+    ? "http://localhost:8000/api/generation/generate-assignment"
+    : "http://localhost:8000/api/generation/generate-quiz";
 
-    // if (!response.ok) {
-    //     const resp_txt = await response.text()
-    //     // console.log("txt",resp_txt)
-    //   throw new Error(`Backend error: ${response.status} - ${resp_txt}`);
-    // }
+    const response = await axios.post(endpoint, {
+      prompt,
+      lecture_urls: lectureUrls,
+      option
+    });
 
-    // const data = await response.json();
-    // // console.log("final sending ... ",data)
-    // return data;
+    if (response.data.status === "success") {
+      return response.data;
+    } else {
+      throw new Error("Generation failed");
+    }
+  } catch (error) {
+    console.error("Generation error:", error);
+    throw error;
   }
+
+}
+
+export async function summarizeLecture(lectureUrl: string) {
+  try {
+    console.log(`Sending summarize request for lecture URL: ${lectureUrl}`);
+    const response = await axios.post(
+      "http://localhost:8000/api/generation/summarize-lecture",
+      { lecture_url: lectureUrl }
+    );
+
+    if (response.data.status === "success") {
+      return response.data;
+    } else {
+      throw new Error("Summarization failed");
+    }
+  } catch (error) {
+    console.error("Summarization error:", error);
+    throw error;
+  }
+}
+
+export async function generateMarkscheme(file: File): Promise<string> {
+    const formData = new FormData();
+    formData.append("file", file);
+    console.log("do i come here?")
+    console.log(file)
+  
+    const res = await fetch("http://localhost:8000/api/generation/generate-markscheme", {
+      method: "POST",
+      body: formData,
+    });
+  
+    const data = await res.json();
+  
+    if (!data || !data.status || data.status !== "success") {
+      throw new Error("Markscheme generation failed");
+    }
+  
+    return data.markscheme_pdf;
+  }
+  

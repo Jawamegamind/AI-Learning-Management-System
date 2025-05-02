@@ -5,6 +5,18 @@ from database.retriever import Retriever
 from fastapi import APIRouter, HTTPException, Request
 from utils.generation_workflow import generate_assignment_workflow
 from models.generation_model import AssignmentRequest, QuizRequest, SummarizeRequest
+from fastapi import  UploadFile, File
+from fastapi.responses import JSONResponse
+import os
+import tempfile
+import base64
+from utils.markscheme_utils import (
+    extract_text_from_pdf,
+    generate_markscheme_json,
+    approve_markscheme,
+    export_markscheme_to_pdf
+)
+from utils.assignment_markscheme_utils import generate_assignment_markscheme
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -150,3 +162,79 @@ async def summarize_lecture(request: SummarizeRequest):
             status_code=500,
             detail=f"Failed to summarize lecture: {str(e)}"
         )
+    
+@generation_router.post("/generate-markscheme")
+async def generate_markscheme(file: UploadFile = File(...)):
+    try:
+        logger.info(f"i come here to generate markscheme: {file}")
+        # Step 1: Save uploaded file to temporary location
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            content = await file.read()
+            tmp.write(content)
+            tmp_path = tmp.name
+
+        # Step 2: Extract text from PDF
+        quiz_text = extract_text_from_pdf(tmp_path)
+        logger.info(f"is quiz text generated: {quiz_text}")
+
+        # Step 3: Generate and auto-approve JSON
+        markscheme = generate_markscheme_json(quiz_text)
+        logger.info(f"the inital markscheme is: {markscheme}")
+        # approved = approve_markscheme(markscheme, quiz_text)
+
+        # Step 4: Export to PDF
+        pdf_output_path = tmp_path.replace(".pdf", "_solution.pdf")
+        # export_markscheme_to_pdf(approved, pdf_output_path)
+        export_markscheme_to_pdf(markscheme, pdf_output_path)
+
+        # Step 5: Return base64 encoded PDF
+        with open(pdf_output_path, "rb") as f:
+            encoded_pdf = base64.b64encode(f.read()).decode("utf-8")
+
+        # Clean up temp files
+        os.remove(tmp_path)
+        os.remove(pdf_output_path)
+
+        return {
+            "status": "success",
+            "markscheme_pdf": encoded_pdf
+        }
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+
+@generation_router.post("/generate-assignment-markscheme")
+async def generate_assignment_markscheme_route(file: UploadFile = File(...)):
+    try:
+        logger.info(f"i come here: {file}")
+
+        # Save uploaded .ipynb to a temp file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".ipynb") as tmp:
+            tmp.write(await file.read())
+            tmp_path = tmp.name
+
+        # Your actual OpenRouter API key here
+        # api_key = os.getenv("OPENROUTER_API_KEY")
+        # logger.info(f"Loaded OpenRouter key: {api_key[:5]}...")  # Do NOT print full key in production
+
+
+        # Generate marking scheme (returns base64-encoded PDF)
+        pdf_base64 = generate_assignment_markscheme(tmp_path)
+
+        # Clean up temp file
+        os.remove(tmp_path)
+
+        return JSONResponse(content={
+            "status": "success",
+            "markscheme_pdf": pdf_base64  # ✅ fixed key name
+        })
+
+    except Exception as e:
+        return JSONResponse(content={
+            "status": "error",
+            "message": str(e)
+        }, status_code=500)

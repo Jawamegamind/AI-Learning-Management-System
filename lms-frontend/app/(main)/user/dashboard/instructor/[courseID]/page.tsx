@@ -6,8 +6,9 @@ import { Box, Typography, Tabs, Tab, Grid2, Paper, List, ListItem, ListItemText,
 import { Delete, Download } from "@mui/icons-material";
 import { createClient } from "@/utils/supabase/client";
 import ResponsiveAppBar from "@/app/_components/navbar";
-import LoadingModal from '../../../../../_components/LoadingModal';
-import {fetchCourseDataFromID, generateFileEmbeddingsonUpload, generateAssignmentOrQuiz, summarizeLecture} from './actions';
+import LoadingModal from '@/app/_components/LoadingModal';
+
+import {fetchCourseDataFromID, generateFileEmbeddingsonUpload, generateAssignmentOrQuiz, summarizeLecture, generateMarkscheme} from './actions';
 
 interface Course {
   id: number;
@@ -225,7 +226,8 @@ export default function CoursePage() {
   };
 
   const fetchFiles = async () => {
-    const folders = ["assignments", "quizzes", "lectures", "summarizations"];
+    // const folders = ["assignments", "quizzes", "lectures", "summarizations"];
+    const folders = ["assignments", "quizzes", "lectures", "summarizations", "quiz_solutions", "assignment_solutions"];
     const allFiles: FileItem[] = [];
 
     for (const folder of folders) {
@@ -414,7 +416,7 @@ export default function CoursePage() {
           <Box>
             <Typography variant="h6" gutterBottom>Resources</Typography>
 
-            {["assignments", "quizzes", "lectures", "summarizations"].map((folder) => (
+            {["assignments", "quizzes", "lectures", "summarizations", "quiz_solutions", "assignment_solutions"].map((folder) => (
               <Box key={folder} mb={4}>
                 <Typography variant="subtitle1" gutterBottom sx={{ textTransform: "capitalize" }}>
                   {folder}
@@ -548,196 +550,354 @@ export default function CoursePage() {
           </Box>
         )}
 
-        {tabIndex === 4 && (
-          <Box>
-            <Typography variant="h6" gutterBottom>AI Tools</Typography>
-            <Grid2 container spacing={2}>
-              <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
-                <Paper elevation={2} sx={{ p: 2 }}>
-                  <Typography variant="subtitle1">Summarize Lecture</Typography>
-                  <Button
-                    fullWidth
-                    sx={{ mt: 1 }}
-                    variant="outlined"
-                    onClick={() => {
-                      setActiveTool('summarize');
-                      setShowLectureSelector(true);
-                    }}
-                  >
-                    Start
-                  </Button>
-                </Paper>
-              </Grid2>
-              <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
-                <Paper elevation={2} sx={{ p: 2 }}>
-                  <Typography variant="subtitle1">Generate Quiz</Typography>
-                  <Button
-                    fullWidth
-                    sx={{ mt: 1 }}
-                    variant="outlined"
-                    onClick={() => {
-                      setActiveTool('quiz');
-                      setShowFileSelector(true);
-                    }}
-                  >
-                    Start
-                  </Button>
-                </Paper>
-              </Grid2>
-              <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
-                <Paper elevation={2} sx={{ p: 2 }}>
-                  <Typography variant="subtitle1">Generate Assignment</Typography>
-                  <Button
-                    fullWidth
-                    sx={{ mt: 1 }}
-                    variant="outlined"
-                    onClick={() => {
-                      setActiveTool('assignment');
-                      setShowFileSelector(true);
-                    }}
-                  >
-                    Start
-                  </Button>
-                </Paper>
-              </Grid2>
-            </Grid2>
+{tabIndex === 4 && (
+  <Box>
+    <Typography variant="h6" gutterBottom>AI Tools</Typography>
+    <Grid2 container spacing={2}>
+      <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
+        <Paper elevation={2} sx={{ p: 2 }}>
+          <Typography variant="subtitle1">Summarize Lecture</Typography>
+          <Button
+            fullWidth
+            sx={{ mt: 1 }}
+            variant="outlined"
+            onClick={() => {
+              setActiveTool('summarize');
+              setShowLectureSelector(true);
+            }}
+          >
+            Start
+          </Button>
+        </Paper>
+      </Grid2>
 
-            {showFileSelector && (
-              <Paper elevation={3} sx={{ p: 3, mt: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  Select files for {activeTool === 'quiz' ? 'quiz' : 'assignment'} generation
-                </Typography>
-                <FormGroup>
-                  {files.map((file) => (
-                    <FormControlLabel
-                      key={file.name}
-                      control={
-                        <Checkbox
-                          checked={selectedFiles.includes(file.url)}
-                          onChange={() => {
-                            handleFileSelection(file.url)
-                            handleFilePathSelection(`${courseID}/`+file.name)
-                          }}
-                        />
-                      }
-                      label={file.name}
-                    />
-                  ))}
-                </FormGroup>
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Enter your prompt:
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    multiline
-                    rows={3}
-                    value={userprompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder={`Enter instructions for generating a ${activeTool}...`}
-                    sx={{ mb: 2 }}
-                  />
-                  <LoadingModal open={loading} title={`Generating ${activeTool}`}/>
-                </Box>
-                {isGenerating && (
-                  <Box sx={{ width: '100%', mb: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <Box sx={{ width: '100%', mr: 1 }}>
-                        <LinearProgress variant="determinate" value={generationProgress} />
-                      </Box>
-                      <Box sx={{ minWidth: 35 }}>
-                        <Typography variant="body2" color="text.secondary">{`${Math.round(generationProgress)}%`}</Typography>
-                      </Box>
-                    </Box>
-                    <Typography variant="body2" color="text.secondary" align="center">
-                      {generationStatus}
-                    </Typography>
-                  </Box>
-                )}
-                <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
-                  <Button
-                    variant="contained"
-                    onClick={() => handleGenerateContent(activeTool as 'quiz' | 'assignment')}
-                    disabled={!userprompt.trim() || isGenerating}
-                  >
-                    {isGenerating ? (
-                      <>
-                        <CircularProgress size={24} sx={{ mr: 1 }} />
-                        Generating...
-                      </>
-                    ) : (
-                      'Generate'
-                    )}
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    onClick={() => {
-                      setShowFileSelector(false);
-                      setActiveTool(null);
-                      setSelectedFiles([]);
-                      setSelectedFilePaths([]);
-                      setPrompt('');
-                      setIsGenerating(false);
-                      setGenerationProgress(0);
-                      setGenerationStatus('');
-                    }}
-                    disabled={isGenerating}
-                    >
-                    Cancel
-                  </Button>
-                </Box>
-              </Paper>
-            )}
+      <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
+        <Paper elevation={2} sx={{ p: 2 }}>
+          <Typography variant="subtitle1">Generate Quiz</Typography>
+          <Button
+            fullWidth
+            sx={{ mt: 1 }}
+            variant="outlined"
+            onClick={() => {
+              setActiveTool('quiz');
+              setShowFileSelector(true);
+            }}
+          >
+            Start
+          </Button>
+        </Paper>
+      </Grid2>
 
-            {showLectureSelector && (
-          <Paper elevation={3} sx={{ p: 3, mt: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Select a lecture to summarize
-            </Typography>
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel id="lecture-select-label">Lecture</InputLabel>
-              <Select
-                labelId="lecture-select-label"
-                value={selectedLecture}
-                label="Lecture"
-                onChange={(e) => setSelectedLecture(e.target.value)}
-              >
-                {files
-                  .filter(file => file.name.startsWith('lectures/'))
-                  .map((file) => {
-                    const lecturePath = `${courseID}/${file.name}`; // Construct courseID/lectures/*.pdf
-                    return (
-                      <MenuItem key={file.url} value={lecturePath}>
-                        {file.name.replace('lectures/', '')}
-                      </MenuItem>
-                    );
-                  })}
-              </Select>
-            </FormControl>
-            <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
-              <Button
-                variant="contained"
-                onClick={handleSummarizeLecture}
-                disabled={!selectedLecture}
-              >
-                Summarize
-              </Button>
-              <LoadingModal open={loading} title="Generating summary"/>
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  setShowLectureSelector(false);
-                  setActiveTool(null);
-                  setSelectedLecture('');
-                }}
-              >
-                Cancel
-              </Button>
-            </Box>
-          </Paper>
-        )}
+      <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
+        <Paper elevation={2} sx={{ p: 2 }}>
+          <Typography variant="subtitle1">Generate Assignment</Typography>
+          <Button
+            fullWidth
+            sx={{ mt: 1 }}
+            variant="outlined"
+            onClick={() => {
+              setActiveTool('assignment');
+              setShowFileSelector(true);
+            }}
+          >
+            Start
+          </Button>
+        </Paper>
+      </Grid2>
+
+      {/* ✅ NEW TOOL: Generate Markscheme from Quiz */}
+      <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
+  <Paper elevation={2} sx={{ p: 2 }}>
+    <Typography variant="subtitle1">Generate Markscheme from Quiz</Typography>
+    <FormControl fullWidth sx={{ mt: 1 }}>
+      <InputLabel id="quiz-select-label">Select Quiz</InputLabel>
+      <Select
+        labelId="quiz-select-label"
+        value={selectedLecture} // reusing selectedLecture state to avoid creating a new one
+        label="Select Quiz"
+        onChange={(e) => setSelectedLecture(e.target.value)}
+      >
+        {files
+          .filter((file) => file.name.startsWith("quizzes/"))
+          .map((file) => {
+            const quizPath = `${courseID}/${file.name}`;
+            return (
+              <MenuItem key={file.url} value={quizPath}>
+                {file.name.replace("quizzes/", "")}
+              </MenuItem>
+            );
+          })}
+      </Select>
+    </FormControl>
+    <Button
+      fullWidth
+      sx={{ mt: 2 }}
+      variant="outlined"
+      onClick={async () => {
+        if (!selectedLecture) {
+          alert("Please select a quiz file first.");
+          return;
+        }
+
+        setLoading(true);
+        try {
+          const selectedFile = files.find((f) => `${courseID}/${f.name}` === selectedLecture);
+          if (!selectedFile) throw new Error("Selected file not found.");
+
+          const blob = await fetch(selectedFile.url).then((res) => res.blob());
+          const fileName = selectedFile.name.replace("quizzes/", "");
+          const base64PDF = await generateMarkscheme(new File([blob], fileName));
+          const pdfBuffer = Uint8Array.from(atob(base64PDF), (c) => c.charCodeAt(0));
+          const savePath = `${courseID}/quiz_solutions/${fileName.replace(".pdf", "")}_solution.pdf`;
+
+          const { error } = await supabase.storage
+            .from("course-materials")
+            .upload(savePath, pdfBuffer, {
+              contentType: "application/pdf",
+              upsert: true,
+            });
+
+          if (error) throw error;
+
+          alert("✅ Markscheme generated and uploaded to Resources > quiz_solutions.");
+          fetchFiles();
+          setSelectedLecture('');
+        } catch (err) {
+          console.error(err);
+          alert("❌ Failed to generate markscheme.");
+        }
+        setLoading(false);
+      }}
+    >
+      Generate
+    </Button>
+  </Paper>
+</Grid2>
+
+<Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
+  <Paper elevation={2} sx={{ p: 2 }}>
+    <Typography variant="subtitle1">Generate Markscheme from Assignment</Typography>
+    <FormControl fullWidth sx={{ mt: 1 }}>
+      <InputLabel id="assignment-select-label">Select Assignment</InputLabel>
+      <Select
+        labelId="assignment-select-label"
+        value={selectedLecture}
+        label="Select Assignment"
+        onChange={(e) => setSelectedLecture(e.target.value)}
+      >
+        {files
+          .filter((file) => file.name.startsWith("assignments/") && file.name.endsWith(".ipynb"))
+          .map((file) => {
+            const assignmentPath = `${courseID}/${file.name}`;
+            return (
+              <MenuItem key={file.url} value={assignmentPath}>
+                {file.name.replace("assignments/", "")}
+              </MenuItem>
+            );
+          })}
+      </Select>
+    </FormControl>
+    <Button
+      fullWidth
+      sx={{ mt: 2 }}
+      variant="outlined"
+      onClick={async () => {
+        if (!selectedLecture) {
+          alert("Please select an assignment first.");
+          return;
+        }
+
+        setLoading(true);
+        try {
+          const selectedFile = files.find((f) => `${courseID}/${f.name}` === selectedLecture);
+          if (!selectedFile) throw new Error("Selected file not found.");
+
+          const blob = await fetch(selectedFile.url).then((res) => res.blob());
+          const fileName = selectedFile.name.replace("assignments/", "");
+          const formData = new FormData();
+          formData.append("file", new File([blob], fileName));
+
+          const res = await fetch("http://localhost:8000/api/generation/generate-assignment-markscheme", {
+            method: "POST",
+            body: formData,
+          });
+
+          const data = await res.json();
+          if (!data || data.status !== "success") throw new Error("Invalid response");
+
+          // ✅ Decode base64 PDF
+          const pdfBuffer = Uint8Array.from(atob(data.markscheme_pdf), (c) => c.charCodeAt(0));
+
+          const savePath = `${courseID}/assignment_solutions/${fileName.replace(".ipynb", "")}_markscheme.pdf`;
+
+          const { error } = await supabase.storage
+            .from("course-materials")
+            .upload(savePath, pdfBuffer, {
+              contentType: "application/pdf",
+              upsert: true,
+            });
+
+          if (error) throw error;
+
+          alert("✅ Assignment marking scheme uploaded to Resources > assignment_solutions.");
+          fetchFiles();
+          setSelectedLecture('');
+        } catch (err) {
+          console.error(err);
+          alert("❌ Failed to generate assignment marking scheme.");
+        }
+        setLoading(false);
+      }}
+    >
+      Generate
+    </Button>
+  </Paper>
+</Grid2>
+
+
+    </Grid2>
+
+    
+
+
+    {/* File selector UI for quiz/assignment generation */}
+    {showFileSelector && (
+      <Paper elevation={3} sx={{ p: 3, mt: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Select files for {activeTool === 'quiz' ? 'quiz' : 'assignment'} generation
+        </Typography>
+        <FormGroup>
+          {files.map((file) => (
+            <FormControlLabel
+              key={file.name}
+              control={
+                <Checkbox
+                  checked={selectedFiles.includes(file.url)}
+                  onChange={() => {
+                    handleFileSelection(file.url)
+                    handleFilePathSelection(`${courseID}/` + file.name)
+                  }}
+                />
+              }
+              label={file.name}
+            />
+          ))}
+        </FormGroup>
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="subtitle1" gutterBottom>
+            Enter your prompt:
+          </Typography>
+          <TextField
+            fullWidth
+            multiline
+            rows={3}
+            value={userprompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder={`Enter instructions for generating a ${activeTool}...`}
+            sx={{ mb: 2 }}
+          />
+          <LoadingModal open={loading} title={`Generating ${activeTool}`} />
         </Box>
-      )}
+        {isGenerating && (
+          <Box sx={{ width: '100%', mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <Box sx={{ width: '100%', mr: 1 }}>
+                <LinearProgress variant="determinate" value={generationProgress} />
+              </Box>
+              <Box sx={{ minWidth: 35 }}>
+                <Typography variant="body2" color="text.secondary">{`${Math.round(generationProgress)}%`}</Typography>
+              </Box>
+            </Box>
+            <Typography variant="body2" color="text.secondary" align="center">
+              {generationStatus}
+            </Typography>
+          </Box>
+        )}
+        <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
+          <Button
+            variant="contained"
+            onClick={() => handleGenerateContent(activeTool as 'quiz' | 'assignment')}
+            disabled={!userprompt.trim() || isGenerating}
+          >
+            {isGenerating ? (
+              <>
+                <CircularProgress size={24} sx={{ mr: 1 }} />
+                Generating...
+              </>
+            ) : (
+              'Generate'
+            )}
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              setShowFileSelector(false);
+              setActiveTool(null);
+              setSelectedFiles([]);
+              setSelectedFilePaths([]);
+              setPrompt('');
+              setIsGenerating(false);
+              setGenerationProgress(0);
+              setGenerationStatus('');
+            }}
+            disabled={isGenerating}
+          >
+            Cancel
+          </Button>
+        </Box>
+      </Paper>
+    )}
+
+    {showLectureSelector && (
+      <Paper elevation={3} sx={{ p: 3, mt: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Select a lecture to summarize
+        </Typography>
+        <FormControl fullWidth sx={{ mb: 2 }}>
+          <InputLabel id="lecture-select-label">Lecture</InputLabel>
+          <Select
+            labelId="lecture-select-label"
+            value={selectedLecture}
+            label="Lecture"
+            onChange={(e) => setSelectedLecture(e.target.value)}
+          >
+            {files
+              .filter(file => file.name.startsWith('lectures/'))
+              .map((file) => {
+                const lecturePath = `${courseID}/${file.name}`;
+                return (
+                  <MenuItem key={file.url} value={lecturePath}>
+                    {file.name.replace('lectures/', '')}
+                  </MenuItem>
+                );
+              })}
+          </Select>
+        </FormControl>
+        <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
+          <Button
+            variant="contained"
+            onClick={handleSummarizeLecture}
+            disabled={!selectedLecture}
+          >
+            Summarize
+          </Button>
+          <LoadingModal open={loading} title="Generating summary" />
+          <Button
+            variant="outlined"
+            onClick={() => {
+              setShowLectureSelector(false);
+              setActiveTool(null);
+              setSelectedLecture('');
+            }}
+          >
+            Cancel
+          </Button>
+        </Box>
+      </Paper>
+    )}
+  </Box>
+)}
+
     </Box>
   </Box>
 );

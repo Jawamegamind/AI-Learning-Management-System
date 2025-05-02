@@ -559,3 +559,321 @@ number of times.
 • Add xx′ to V.
 BERT Pre-training Tasks
 --- End Retrieval ---
+--- New Retrieval ---
+Optimized Query: make quiz 
+Context:
+No documents found for provided URLs.
+--- End Retrieval ---
+--- New Retrieval ---
+Optimized Query: make quiz
+Context:
+No documents found for provided URLs.
+--- End Retrieval ---
+--- New Retrieval ---
+Optimized Query: make quiz on key topics in the lecture such as Lora, mixture of experts etc.
+Context:
+No documents found for provided URLs.
+--- End Retrieval ---
+--- New Retrieval ---
+Optimized Query: make quiz on key topics in the lecture and generate mcqs true false and short questions
+Context:
+Additional Reading Materials 
+• ZeRO Optimizer
+• ZeRO-2 & DeepSpeed
+• ZeRO 3
+• Flash Attention
+• Flash Attention 2
+• Knowledge Distillation
+Lecture 6: Efficiency in LLMs
+Syed Babar Ali School of  Science and Engineering LUMS
+Spring 2025
+Problem Solving – Artificial Intelligence – Uncertainty
+AI-602: Large Language Models 
+Systems
+Lab Introduction
+ Steps in this Lab
+1. Install Required Libraries
+1. Uses transformers, bitsandbytes, and accelerate to run quantized models efficiently .
+2. Set Up Tokenizer and Model Loading
+1. Loads Mistral-7B from Hugging Face.
+2. Uses BitsAndBytesConfig to enable quantization.
+3. Define an Evaluation Function
+1. Runs inference on given prompts.
+2. Measures:
+1. Inference time
+2. Tokens per second
+3. VRAM usage
+4. Model size
+4. Compare 16-bit vs. 4-bit Performance
+1. Runs the same set of test prompts on both versions.
+2. Plots a performance comparison.
+Agenda
+• Why Efficiency Matter? 
+• Training Efficiency?
+• PEFT
+• MoE 
+• ZeroOptimization
+• Flash Attention
+• Inferance Efficiency
+• Quanitzation 
+• Knowledge Distillation
+• Lab Introduction
+Agenda
+• Why Efficiency Matter? 
+• Training Efficiency?
+• PEFT
+• MoE 
+• ZeroOptimization
+• Flash Attention
+• Inferance Efficiency
+• Quanitzation 
+• Knowledge Distillation
+• Lab Introduction
+Agenda
+• Why Efficiency Matter? 
+• Training Efficiency?
+• PEFT
+• MoE 
+• ZeroOptimization
+• Flash Attention
+• Inferance Efficiency
+• Quanitzation 
+• Knowledge Distillation
+• Lab Introduction
+How Does Knowledge Distillation Work?
+• A large teacher model is first trained, then its knowledge is transferred to a small student model.
+ Step-by-Step Process
+1️⃣ Train a large teacher model (e.g., BERT, GPT-4).
+2️⃣ Use the teacher’s outputs (soft labels) to guide the student model instead of raw labels.
+3️⃣ Train a small student model to mimic the teacher’s predictions.
+ Key Trick: Soft Labels
+• Instead of using hard labels (correct/incorrect), the student model learns from teacher’s probability distributions 
+(e.g., “Paris” is 90% correct, “London” is 5%, etc.).
+• This helps the student learn subtle patterns and generalize better.
+Agenda
+• Why Efficiency Matter? 
+• Training Efficiency?
+• PEFT
+• MoE 
+• ZeroOptimization
+• Flash Attention
+• Inference Efficiency
+• Quanitzation 
+• Knowledge Distillation
+• Lab Introduction
+Agenda
+• Why Efficiency Matter? 
+• Training Efficiency?
+• PEFT
+• MoE 
+• ZeroOptimization
+• Flash Attention
+• Inference Efficiency
+• Quanitzation 
+• Knowledge Distillation
+• Lab Introduction
+Agenda
+• Why Efficiency Matter? 
+• Training Efficiency?
+• PEFT
+• MoE 
+• ZeroOptimization
+• Flash Attention
+• Inference Efficiency
+• Quanitzation 
+• Knowledge Distillation
+• Lab Introduction
+--- End Retrieval ---
+--- New Retrieval ---
+Optimized Query: make quiz on key terms from this lecture and make it hard
+Context:
+Lecture 4: Tokenization, Embedding and Pre-Training of LLM
+Syed Babar Ali School of  Science and Engineering LUMS
+Spring 2025
+Problem Solving – Artificial Intelligence – Uncertainty
+AI-602: Large Language Models 
+Systems
+Course 
+Journey
+• We looked at a partial history  of language 
+models
+• From early N-gr am models through neural network-
+based models (including RNNs, LSTMs) to the 
+current state-of-the-art T ransformer architecture
+• We also went over how to assess Business 
+Requirements and Data Curation necessary for 
+Building LLMs
+• Today, let’s move to Pre-training of LLM and 
+related concepts
+Steps of LLM training
+T okenizer
+Training
+Self-supervised
+Pre-training
+Instruction
+Finetuning
+Reinforcement 
+Learningfrom 
+Human Feedback
+Recognize
+Words
+T extBook
+Reading Doing Exercises Teachers’feedback
+BERT Pre-training Tasks
+Agenda
+• Why Train an LLM from scratch
+• T okenization
+• VectorEmbeddings
+• Transformers
+• Scaling Law
+• Hardware Considerations
+• Pre-Training
+Agenda
+• Why Train an LLM from scratch
+• T okenization
+• VectorEmbeddings
+• Transformers
+• Scaling Law
+• Hardware Considerations
+• Pre-Training
+BERT Pre-training Tasks: MLM
+Agenda
+• Why Train an LLM from scratch
+• T okenization
+• Vector Embeddings
+• Transformers
+• Scaling Law
+• Hardware Considerations
+• Pre-Training
+Agenda
+• Why Train an LLM from scratch
+• T okenization
+• Vector Embeddings
+• Transformers
+• Scaling Law
+• Hardware Considerations
+• Pre-Training
+Agenda
+• Why Train an LLM from scratch
+• T okenization
+• Vector Embeddings
+• Transformers
+• Scaling Law
+• Hardware Considerations
+• Pre-Training
+--- End Retrieval ---
+--- New Retrieval ---
+Optimized Query: generate quiz on the key terms in this lecture and make it hard
+Context:
+Lecture 3: Business Problem & Dataset Engineering for LLMs
+LUMS Syed Babar Ali School of Science and Engineering 
+Spring 2025
+Problem Solving – Artificial Intelligence – Uncertainty
+AI-602: Large Language Models 
+Systems
+Self-Instruct with LLMs
+Overview
+o Framework for enhancing LLM instruction -
+following by generating its own data.
+Human Annotations
+• Often times you need to annotate your own data.
+o Requires back and forth among annotators to generate the right annotations (Iterative)
+o Labor and cost intensive
+o Requires strong coordination between scientists, engineers & annotators.
+Self-Instruct with LLMs
+Overview
+o Framework for enhancing LLM instruction -
+following by generating its own data.
+Process
+o Seed Dataset: Start with human -written instructions.
+o Generate Instructions: LLM creates new instructions.
+o Filter instructions for duplicates, similarity & 
+diversity.
+o Create Instances: Form input -output pairs; filter for 
+quality.
+o Fine-tuning: Improve model using the generated 
+dataset.
+Self-Instruct with LLMs
+Overview
+o Framework for enhancing LLM instruction -
+following by generating its own data.
+Process
+o Seed Dataset: Start with human -written instructions.
+o Generate Instructions: LLM creates new instructions.
+o Filter instructions for duplicates, similarity & 
+diversity.
+o Create Instances: Form input -output pairs; filter for 
+quality.
+o Fine-tuning: Improve model using the generated 
+dataset.
+Benefits
+o Scalable: Less reliance on human annotation.
+o Diverse Tasks: Wider variety improves 
+generalization.
+o User Alignment: Better understanding of commands.
+AI Powered Data Synthesis
+• AI powered data synthesis involves using AI systems instead to speed up 
+data generation where:
+o System generated data is not available
+o Costly to obtain
+• Imagine, you want to train a bot to play chess:
+o A game played by humans might take too long.
+• AI based data synthesis also depends on the model training stage.
+o Pretraining
+▪ AI crawlers to crawl web, books, papers etc
+▪ Dataset examples include Comopedia, a 25 billion synthetic data set
+o Fine tuning
+▪ Instruction fine tuning                Instruction synthesis
+▪ Supervised fine tuning ex. Classification with reasoning                Classification label with reasoning synthesis
+Traditional Data Synthesis
+Rule-based 
+data synthesis
+• Credit Cards
+• Invoices
+• T ax forms
+• Bank Statements
+• T ext to remove gender bias, synonyms etc.
+Simulation 
+Softwares
+• T est how a self-driving car reacts when encountering a horse on the highway
+• Simulate scenarios with different joint movements and use only the scenarios 
+where coffee is successfully poured to train the robot
+• Simulate the Earth’s systems, climate scientists can create variations in 
+temperature changes, precipitation patterns, and extreme weather scenarios.
+• This involves use of established existing systems to generate data for AI 
+models.
+o Produces coherent data for specific applications
+AI Powered Data Synthesis
+• AI powered data synthesis involves using AI systems instead to speed up 
+data generation where:
+o System generated data is not available
+o Costly to obtain
+• Imagine, you want to train a bot to play chess:
+o A game played by humans might take too long.
+Problem Formulation Frameworks
+• You have a brilliant idea for a new AI 
+project. 
+o To make it happen, you need to 
+convince management to fund your 
+idea.
+• AI projects are hard to define
+• Several frameworks to guide problem 
+formulation
+o AI Canvas
+o CRISP-DM
+o Design Thinking
+Key Takeaways
+• Core Principles of Dataset Design:
+o Focus on behaviors you want your model to learn .
+o Ensure datasets meet quality, coverage, and quantity criteria.
+o High-quality, diverse datasets often outperform larger noisy datasets.
+• Synthetic data:
+o A practical solution, especially for finetuning.
+o Different training phases (pre -training, instruction finetuning) require tailored datasets.
+o Both real and synthetic data must be rigorously evaluated for quality.
+o Reliable evaluation methods are essential for adoption.
+• Challenges in Dataset Creation:
+o Annotation and verification are harder than automation .
+o Creativity and attention to detail are critical in dataset design.
+o Overcoming challenges inspires innovative solutions in data synthesis and evaluation.
+--- End Retrieval ---
