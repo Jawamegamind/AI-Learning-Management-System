@@ -11,11 +11,14 @@ class AssignmentState(TypedDict):
     option: str             # "quiz" or "assignment"
     scores: List[int]       #list of all scores
     optimzed_query: str     # optimized query for rag after metaprocessing
-
+    human_feedback: str
+    assignment_prev_version: str 
 
 class AssignmentRequest(BaseModel):
     prompt: str
     lecture_urls: List[str]
+    feedback: str
+    prev_version: str
 
 class QuizRequest(BaseModel):
     prompt: str

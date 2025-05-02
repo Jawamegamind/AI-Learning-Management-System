@@ -13,35 +13,10 @@ from langgraph.graph import StateGraph, START, END
 from sentence_transformers import SentenceTransformer
 from models.generation_model import AssignmentState
 from nbformat.v4 import new_notebook, new_code_cell, new_markdown_cell
-from .prompts import getmetaprompt, getgenerationprompt, getverificationprompt, COMPONENT_WEIGHTAGES
+from .prompts import getmetaprompt, getgenerationprompt, getquizverificationprompt, getgenerationwithfeedbackprompt, getragoptimizationprompt, QUIZ_COMPONENT_WEIGHTAGES
 
 # Initialize embedding model
 embedding_model = SentenceTransformer('thenlper/gte-base')
-
-# RAG query optimization prompt
-rag_query_optimization_system_prompt = """
-You are an expert in information retrieval and vector-based semantic search.
-
-Your job is to take a **messy, human-authored prompt** and extract from it a **precise, minimal query** that will retrieve only the most **relevant context** for solving the assignment.
-
-Focus on **what information is actually needed** to perform the task (definitions, algorithms, math, code examples, etc). Strip away instructional text, formatting details, and conversational fluff.
-
-You MUST:
-- Use exact technical phrasing when possible
-- Retain any important entities (e.g., "ResNet", "variational autoencoder", "KL divergence")
-- Avoid vague filler like "please", "as a student", "write an assignment"
-- Output a single sentence or question optimized for retrieval
-
-Example:
-
-Input:
-You are a TA for a course on transformers. Write an assignment where students have to implement multi-head attention from scratch, evaluate it on a toy dataset, and compare it with a PyTorch version.
-
-Optimized Query:
-Multi-head attention implementation and evaluation compared to PyTorch version
-
-Respond ONLY with the optimized query.
-"""
 
 def query_openrouter(prompt: str, api_key: str, max_length: int = 500, model: str = "meta-llama/llama-4-maverick:free") -> str:
     client = OpenAI(
@@ -71,11 +46,27 @@ def extract_score(text: str) -> float:
         print(f"Failed to parse scores dict: {e}")
         return 0.0
 
-    score = sum(scores_dict[k] * v for k, v in COMPONENT_WEIGHTAGES.items())
+    score = sum(scores_dict[k] * v for k, v in QUIZ_COMPONENT_WEIGHTAGES.items())
     return score * 10
+
+def extract_notebook_from_json(json_notebook_str):
+    json_notebook = json.loads(json_notebook_str)
+    cells = json_notebook.get("cells", [])
+    extracted_parts = []
+
+    for cell in cells:
+        if cell["cell_type"] == "markdown":
+            markdown_text = "".join(cell.get("source", []))
+            extracted_parts.append(f"# Markdown Cell\n{markdown_text.strip()}\n")
+        elif cell["cell_type"] == "code":
+            code_text = "".join(cell.get("source", []))
+            extracted_parts.append(f"# Code Cell\n{code_text.strip()}\n")
+
+    return "\n".join(extracted_parts).strip()
 
 def retrieval_node(state: AssignmentState, api_key: str) -> AssignmentState:
     raw_prompt = state['input_content']
+    rag_query_optimization_system_prompt = getragoptimizationprompt()
     optimization_prompt = f"{rag_query_optimization_system_prompt}\n\nInput:\n{raw_prompt}\n\nOptimized Query:"
     optimized_query = query_openrouter(optimization_prompt, api_key)
     print("Optimized Query:", optimized_query)
@@ -155,19 +146,30 @@ def metaprompt_node(state: AssignmentState, api_key: str) -> AssignmentState:
 
 def generate_assignment_node(state: AssignmentState, api_key: str) -> AssignmentState:
     prompt = state["assignment"]
-    gen_prompt = getgenerationprompt(prompt, state['option'])
-    assignment = query_openrouter(gen_prompt, api_key)
+    feedback = state['human_feedback']
+    if feedback == '':
+        gen_prompt = getgenerationprompt(prompt, state['option'])
+        assignment = query_openrouter(gen_prompt, api_key)
+    else:
+        assignment_prev_version = extract_notebook_from_json(state['assignment_prev_version'])
+        gen_wfeedback_prompt = getgenerationwithfeedbackprompt(assignment_prev_version, feedback)
+        assignment = query_openrouter(gen_wfeedback_prompt, api_key)
+
     state["assignment"] = assignment
     print("[ASSIGNMENT]========", assignment)
     return {**state, "assignment": assignment}
 
 def verify_assignment_node(state: AssignmentState, api_key: str) -> AssignmentState:
-    if state['option'] == 'quiz':
-        return {**state, "status": "verified"}
+    # if state['option'] == 'quiz':
+    #     return {**state, "status": "verified"}
+    if state['option'] == 'assignment':
+        state["status"] = "awaiting_feedback"
+        return {**state, "status": "awaiting_feedback"}
 
     feedback_prompt = "This is the first draft so give full marks (10/10)" if state['feedback'] == "" else f"Feedback: {state['feedback']}. If the given feedback has NOT been FULLY incorporated, PENALIZE HARSHLY."
     print("######################################feedback_prompt", feedback_prompt)
-    critique_prompt = getverificationprompt(state['assignment'], feedback_prompt)
+    # critique_prompt = getverificationprompt(state['assignment'], feedback_prompt)
+    critique_prompt = getquizverificationprompt(state['assignment'], feedback_prompt)
     review = query_openrouter(critique_prompt, api_key)
     state['feedback'] = review
     score = extract_score(review)
@@ -212,7 +214,7 @@ def convert_to_notebook_node(state: AssignmentState) -> AssignmentState:
     notebook = new_notebook(cells=cells)
     notebook_json_str = nbformat.writes(notebook)
     notebook_json = json.loads(notebook_json_str)
-    return {**state, "status": "complete", "assignment": notebook_json}
+    return {**state, "status": "awaiting_feedback", "assignment": notebook_json}
 
 def convert_to_pdf_node(state: AssignmentState) -> AssignmentState:
     print("converting quiz to pdf")
@@ -270,7 +272,13 @@ def convert_to_pdf_node(state: AssignmentState) -> AssignmentState:
         print("error while generating pdf from text",e)
     return {**state, "status": "complete", "assignment": pdf_base64}
 
-def generate_assignment_workflow(input_content: str, openrouter_api_key: str, assignmentorquiz: str, urls: Optional[List[str]] = None) -> dict:
+# def wait_for_human_feedback(state):
+#     print("waiting for feedback")
+#     state["status"] = "awaiting_feedback"
+#     return state
+
+
+def generate_assignment_workflow(input_content: str, openrouter_api_key: str, assignmentorquiz: str, human_feedback:str, prev_version:str,  urls: Optional[List[str]] = None) -> dict:
     workflow = StateGraph(AssignmentState)
 
     # Nodes
@@ -280,9 +288,15 @@ def generate_assignment_workflow(input_content: str, openrouter_api_key: str, as
     workflow.add_node("verify_assignment", lambda s: verify_assignment_node(s, openrouter_api_key))
     workflow.add_node("convert_to_notebook", convert_to_notebook_node)
     workflow.add_node("convert_to_pdf", convert_to_pdf_node)
+    # workflow.add_node("human_feedback", wait_for_human_feedback)
+
 
     # Edges
-    workflow.add_edge(START, "retrieval")
+    # workflow.add_edge(START, "retrieval")
+    workflow.add_conditional_edges(START, lambda state: "retrieval" if state.get("human_feedback", "") == "" else "generate_assignment", {
+        "retrieval": "retrieval",
+        "generate_assignment": "generate_assignment",
+    })
     workflow.add_edge("retrieval", "metaprompt")
     workflow.add_conditional_edges("metaprompt", lambda s: s["status"], {
         "failed": END,
@@ -296,6 +310,9 @@ def generate_assignment_workflow(input_content: str, openrouter_api_key: str, as
             return "convert_to_notebook" if state["option"] == "assignment" else "convert_to_pdf"
         elif state["status"] == "pending":
             return "generate_assignment"
+            # return "generate_assignment" if state["option"] == "quiz" else "human_feedback"
+        elif state["status"] == "awaiting_feedback":
+            return "convert_to_notebook"
         else:
             print("should-never-enter-this-part-of-workflow")
             return END
@@ -303,7 +320,8 @@ def generate_assignment_workflow(input_content: str, openrouter_api_key: str, as
     workflow.add_conditional_edges("verify_assignment", handle_verified_routing, {
         "convert_to_notebook": "convert_to_notebook",
         "convert_to_pdf": "convert_to_pdf",
-        "generate_assignment": "generate_assignment"
+        "generate_assignment": "generate_assignment",
+        # "human_feedback" : "human_feedback"
     })
 
     workflow.add_edge("convert_to_notebook", END)
@@ -312,14 +330,16 @@ def generate_assignment_workflow(input_content: str, openrouter_api_key: str, as
     graph = workflow.compile()
     initial_state = {
         "input_content": input_content,
-        "assignment": "",
+        "assignment": "",   #stores either assignment or quiz depending on api call
         "feedback": "",
         "status": "pending",
         "attempts": 0,
         "urls": urls,
         "option": assignmentorquiz,
         "scores": [],
-        "optimized_query": ""
+        "optimized_query": "",
+        "human_feedback" : human_feedback,
+        "assignment_prev_version" : prev_version
     }
 
     # Generate Mermaid diagram
@@ -329,8 +349,8 @@ def generate_assignment_workflow(input_content: str, openrouter_api_key: str, as
             f.write(mermaid_code)
         print("Mermaid diagram saved as workflow_graph.mmd")
         print("Render it at: https://mermaid.live/")
-        print("\nMermaid Code:\n")
-        print(mermaid_code)
+        # print("\nMermaid Code:\n")
+        # print(mermaid_code)
     except Exception as e:
         print(f"Failed to generate Mermaid diagram: {e}")
 
