@@ -599,7 +599,7 @@ export default function CoursePage() {
           <Box>
             <Typography variant="h6" gutterBottom>Resources</Typography>
 
-            {["assignments", "quizzes", "lectures", "summarizations"].map((folder) => (
+            {["assignments", "quizzes", "lectures", "summarizations", "flashcards"].map((folder) => (
               <Box key={folder} mb={4}>
                 <Typography variant="subtitle1" gutterBottom sx={{ textTransform: "capitalize" }}>
                   {folder}
