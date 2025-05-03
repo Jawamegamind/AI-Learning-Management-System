@@ -943,85 +943,156 @@ export default function CoursePage() {
                 </Paper>
               </Grid2>
 
-              <Grid2 size={{ xs:12, sm:6, md:4 }}>
-                <Paper elevation={2} sx={{ p: 2 }}>
-                  <Typography variant="subtitle1">Talk to Your Lecture</Typography>
-                  <Button
-                    fullWidth
-                    sx={{ mt: 1 }}
-                    variant="outlined"
-                    disabled={activeTool !== null && activeTool !== 'chat'}
-                    onClick={() => setActiveTool(activeTool === 'chat' ? null : 'chat')}
-                  >
-                    {activeTool === 'chat' ? "Close" : "Start"}
-                  </Button>
-
-                  {activeTool === 'chat' && (
-                    <Box mt={2}>
-                      <Box sx={{ maxHeight: 300, overflowY: 'auto', mb: 2, p: 2, bgcolor: 'background.paper' }}>
-                        {conversationHistory.map((msg, index) => (
-                          <Box key={index} mb={1}>
-                            <Typography variant="subtitle2" color={msg.role === 'user' ? 'primary' : 'secondary'}>
-                              {msg.role === 'user' ? 'You' : 'Assistant'}:
-                            </Typography>
-                            <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                              {msg.content}
-                            </Typography>
-                          </Box>
-                        ))}
-                      </Box>
-
-                      <FormGroup sx={{ mt: 2 }}>
-                        <Typography variant="subtitle2" gutterBottom>Select lectures to chat with:</Typography>
-                        {files
-                          .filter(f => f.name.startsWith("lectures/"))
-                          .map((file) => (
-                            <FormControlLabel
-                              key={file.name}
-                              control={
-                                <Checkbox
-                                  checked={selectedChatLectures.includes(file.url)}
-                                  onChange={(e) => {
-                                    const checked = e.target.checked;
-                                    setSelectedChatLectures(prev =>
-                                      checked
-                                        ? [...prev, file.url]
-                                        : prev.filter(url => url !== file.url)
-                                    );
-                                  }}
-                                />
-                              }
-                              label={file.name.replace("lectures/", "")}
-                            />
-                          ))}
-                      </FormGroup>
-
-                      <TextField
-                        fullWidth
-                        label="Type your message"
-                        value={chatMessage}
-                        onChange={(e) => setChatMessage(e.target.value)}
-                        multiline
-                        rows={2}
-                        sx={{ mt: 2 }}
-                      />
-
-                      {error && (
-                        <Typography color="error" mt={1}>
-                          {error}
-                        </Typography>
-                      )}
-
-                      <Button
-                        sx={{ mt: 2 }}
-                        variant="contained"
-                        onClick={handleChatSubmit}
-                        disabled={chatGenerating}
-                      >
-                        {chatGenerating ? "Sending..." : "Send"}
-                      </Button>
+              <Grid2 size={{ xs:12, sm:12, md:12 }}>
+                <Paper elevation={2} sx={{ p: 2, height: '600px', display: 'flex', flexDirection: 'column' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="subtitle1">Talk to Your Lecture</Typography>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button
+                                variant="outlined"
+                                color="error"
+                                onClick={() => {
+                                    setConversationHistory([]);
+                                    setSelectedChatLectures([]);
+                                    setChatMessage("");
+                                    handleClick("Conversation cleared.", "info");
+                                }}
+                                disabled={!activeTool || activeTool !== 'chat'}
+                            >
+                                Clear Session
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                disabled={activeTool !== null && activeTool !== 'chat'}
+                                onClick={() => setActiveTool(activeTool === 'chat' ? null : 'chat')}
+                            >
+                                {activeTool === 'chat' ? "Close" : "Start"}
+                            </Button>
+                        </Box>
                     </Box>
-                  )}
+
+                    {activeTool === 'chat' && (
+                        <Box mt={2} sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                            <Box sx={{ 
+                                flex: 1, 
+                                overflowY: 'auto', 
+                                mb: 2, 
+                                p: 2, 
+                                bgcolor: 'background.paper',
+                                borderRadius: 2,
+                                border: '1px solid',
+                                borderColor: 'divider'
+                            }}>
+                                {conversationHistory.map((msg, index) => (
+                                    <Box 
+                                        key={index} 
+                                        mb={2}
+                                        sx={{
+                                            display: 'flex',
+                                            justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start'
+                                        }}
+                                    >
+                                        <Box
+                                            sx={{
+                                                maxWidth: '70%',
+                                                p: 2,
+                                                borderRadius: 2,
+                                                bgcolor: msg.role === 'user' ? 'primary.main' : 'grey.100',
+                                                color: msg.role === 'user' ? 'white' : 'text.primary',
+                                                position: 'relative',
+                                                '&::before': {
+                                                    content: '""',
+                                                    position: 'absolute',
+                                                    top: '50%',
+                                                    [msg.role === 'user' ? 'right' : 'left']: '-8px',
+                                                    transform: 'translateY(-50%)',
+                                                    borderStyle: 'solid',
+                                                    borderWidth: '8px 8px 8px 0',
+                                                    borderColor: msg.role === 'user' 
+                                                        ? 'transparent primary.main transparent transparent'
+                                                        : 'transparent transparent transparent grey.100'
+                                                }
+                                            }}
+                                        >
+                                            <Typography variant="subtitle2" sx={{ mb: 1, opacity: 0.8 }}>
+                                                {msg.role === 'user' ? 'You' : 'Assistant'}:
+                                            </Typography>
+                                            <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                                                {msg.content}
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                ))}
+                            </Box>
+
+                            <FormGroup sx={{ mb: 2 }}>
+                                <Typography variant="subtitle2" gutterBottom>Select lectures to chat with:</Typography>
+                                <Box sx={{ 
+                                    maxHeight: '100px', 
+                                    overflowY: 'auto',
+                                    border: '1px solid',
+                                    borderColor: 'divider',
+                                    borderRadius: 1,
+                                    p: 1,
+                                    display: 'flex',
+                                    flexWrap: 'wrap',
+                                    gap: 1
+                                }}>
+                                    {files
+                                        .filter(f => f.name.startsWith("lectures/"))
+                                        .map((file) => (
+                                            <FormControlLabel
+                                                key={file.name}
+                                                control={
+                                                    <Checkbox
+                                                        checked={selectedChatLectures.includes(file.url)}
+                                                        onChange={(e) => {
+                                                            const checked = e.target.checked;
+                                                            setSelectedChatLectures(prev =>
+                                                                checked
+                                                                    ? [...prev, file.url]
+                                                                    : prev.filter(url => url !== file.url)
+                                                            );
+                                                        }}
+                                                    />
+                                                }
+                                                label={file.name.replace("lectures/", "")}
+                                            />
+                                        ))}
+                                </Box>
+                            </FormGroup>
+
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                <TextField
+                                    fullWidth
+                                    label="Type your message"
+                                    value={chatMessage}
+                                    onChange={(e) => setChatMessage(e.target.value)}
+                                    multiline
+                                    rows={2}
+                                    sx={{ flex: 1 }}
+                                />
+                                <Button
+                                    variant="contained"
+                                    onClick={handleChatSubmit}
+                                    disabled={chatGenerating}
+                                    sx={{ 
+                                        alignSelf: 'flex-end',
+                                        minWidth: '100px',
+                                        height: '56px'
+                                    }}
+                                >
+                                    {chatGenerating ? "Sending..." : "Send"}
+                                </Button>
+                            </Box>
+
+                            {error && (
+                                <Typography color="error" mt={1}>
+                                    {error}
+                                </Typography>
+                            )}
+                        </Box>
+                    )}
                 </Paper>
               </Grid2>
 
