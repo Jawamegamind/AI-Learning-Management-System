@@ -21,6 +21,7 @@ async def generate_assignment(request: AssignmentRequest):
         result = generate_assignment_workflow(
             input_content=request.prompt,
             openrouter_api_key=os.getenv("OPENROUTER_API_KEY"),
+            together_api_key=os.getenv("TOGETHER_API_KEY"),
             assignmentorquiz= "assignment",
             human_feedback = request.feedback,
             prev_version = request.prev_version,
@@ -60,9 +61,10 @@ async def generate_quiz(request: QuizRequest):
         result = generate_assignment_workflow(
             input_content=request.prompt,
             openrouter_api_key=os.getenv("OPENROUTER_API_KEY"),
+            together_api_key=os.getenv("TOGETHER_API_KEY"),
             assignmentorquiz= "quiz",
-            human_feedback = request.feedback,
-            prev_version = request.prev_version,
+            human_feedback = "",
+            prev_version = "",
             urls=request.lecture_urls
         )
         if result["status"] == "failed":

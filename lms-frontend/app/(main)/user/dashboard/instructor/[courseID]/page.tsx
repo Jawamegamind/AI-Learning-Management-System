@@ -329,15 +329,15 @@ export default function CoursePage() {
         .single();
 
       if (rpcError || !data) {
-        console.error('Failed to delete embeddings:', rpcError?.message || 'No data returned');
-        alert('Failed to delete embeddings from database.');
+        console.log('Failed to delete embeddings:', rpcError?.message || 'No data returned');
+        alert('Warning: Embeddings for deleted file were not present in database. Confirm if this is expected behaviour');
         return;
       }
 
       // Check RPC response
       if (data.status !== 'success') {
-        console.error('Embedding deletion failed:', data.message);
-        alert(`Failed to delete embeddings: ${data.message}`);
+        console.log('Failed to delete embeddings:', data.message || 'No data returned');
+        alert('Warning: Embeddings for deleted file were not present in database. Confirm if this is expected behaviour');
         return;
       }
 

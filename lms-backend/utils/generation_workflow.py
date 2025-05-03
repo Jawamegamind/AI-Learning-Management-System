@@ -4,8 +4,11 @@ import json
 import base64
 import nbformat
 from io import BytesIO
+import requests
 from openai import OpenAI
 from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import LETTER
+from reportlab.lib.units import inch
 from typing import List, Optional
 from database.retriever import Retriever
 from reportlab.lib.pagesizes import LETTER
@@ -33,6 +36,36 @@ def query_openrouter(prompt: str, api_key: str, max_length: int = 500, model: st
     except Exception as e:
         print("api call to llm error", completion.error['message'])
         return ""
+
+def query_together(prompt:str, api_key: str, max_length: int = 500, model_name: str = "muhammadahmad1/test-lora-model-creation-8b") -> str:
+    # Step 1: Submit the inference job
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+    "model": model_name,
+    "prompt": prompt,
+    "temperature": 0.8,
+    "max_tokens": max_length
+}
+
+    response = requests.post("https://api.together.xyz/v1/completions", headers=headers, json=payload)
+
+    if response.status_code != 200:
+        raise Exception(f"Error receiving response: {response.status_code}, {response.text}")
+
+    completion_output = response.json().get("choices", [{}])[0].get("text", "").strip()
+    if not completion_output:
+        raise Exception("⚠️ No output returned by the fine-tuned model. Fallback: Querying base model...")
+
+    if completion_output:
+        print("\n🧠 Model Response:")
+        print(completion_output)
+    else:
+        print("⚠️ No output returned by the fine-tuned model. Querying base model...")
+    return completion_output
 
 def extract_score(text: str) -> float:
     matchh = re.search(r"\[\[\[REVIEW_SCHEME\]\]\] = (\{.*\})", text)
@@ -159,18 +192,37 @@ def generate_assignment_node(state: AssignmentState, api_key: str) -> Assignment
     print("[ASSIGNMENT]========", assignment)
     return {**state, "assignment": assignment}
 
-def verify_assignment_node(state: AssignmentState, api_key: str) -> AssignmentState:
+def verify_assignment_node(state: AssignmentState, openrouter_api_key: str, together_api_key: str) -> AssignmentState:
     # if state['option'] == 'quiz':
     #     return {**state, "status": "verified"}
     if state['option'] == 'assignment':
         state["status"] = "awaiting_feedback"
         return {**state, "status": "awaiting_feedback"}
 
-    feedback_prompt = "This is the first draft so give full marks (10/10)" if state['feedback'] == "" else f"Feedback: {state['feedback']}. If the given feedback has NOT been FULLY incorporated, PENALIZE HARSHLY."
+    feedback_prompt = "This is the first draft so give full marks only for feedback incorporation (10/10). Other metrics ARE NOT EXPECTED to have more than 7 marks and need extensive criticism for improvement. Be EXTREMELY CRITICAL in other fields. ONLY give scores above 7 for criteria that are exceptionally well-executed with zero flaws. Assume perfection is expected on first draft to drive improvement." if state['feedback'] == "" else f"Feedback: {state['feedback']}. If the given feedback has NOT been FULLY incorporated, PENALIZE HARSHLY."
     print("######################################feedback_prompt", feedback_prompt)
     # critique_prompt = getverificationprompt(state['assignment'], feedback_prompt)
     critique_prompt = getquizverificationprompt(state['assignment'], feedback_prompt)
-    review = query_openrouter(critique_prompt, api_key)
+    try:
+        review = query_together(critique_prompt, together_api_key)
+        state['feedback'] = review
+        score = extract_score(review)
+        if not score or score < 10 :
+            raise Exception("Score extraction failed.")
+        print('Last 3 Scores', state['scores'])
+        print("New Score:", score, "@ Attempt", state['attempts'])
+        print("Review:", review)
+        not_improving = len(state['scores']) >= 3 and state['scores'][-1] == state['scores'][-2] == state['scores'][-3]
+        state['scores'].append(score)
+
+        if score >= 90.0 or state['attempts'] >= 5 or not_improving:
+            return {**state, "status": "verified"}
+
+        return {**state, "status": "pending", "attempts": state["attempts"] + 1}
+
+    except Exception as e:
+        print("Error in query_together", e)
+        review = query_openrouter(critique_prompt, openrouter_api_key)
     state['feedback'] = review
     score = extract_score(review)
     print('Last 3 Scores', state['scores'])
@@ -278,14 +330,15 @@ def convert_to_pdf_node(state: AssignmentState) -> AssignmentState:
 #     return state
 
 
-def generate_assignment_workflow(input_content: str, openrouter_api_key: str, assignmentorquiz: str, human_feedback:str, prev_version:str,  urls: Optional[List[str]] = None) -> dict:
+def generate_assignment_workflow(input_content: str, openrouter_api_key: str, together_api_key: str, assignmentorquiz: str, human_feedback:str, prev_version:str,  urls: Optional[List[str]] = None) -> dict:
+    print("enters function")
     workflow = StateGraph(AssignmentState)
 
     # Nodes
     workflow.add_node("retrieval", lambda s: retrieval_node(s, openrouter_api_key))
     workflow.add_node("metaprompt", lambda s: metaprompt_node(s, openrouter_api_key))
     workflow.add_node("generate_assignment", lambda s: generate_assignment_node(s, openrouter_api_key))
-    workflow.add_node("verify_assignment", lambda s: verify_assignment_node(s, openrouter_api_key))
+    workflow.add_node("verify_assignment", lambda s: verify_assignment_node(s, openrouter_api_key,together_api_key))
     workflow.add_node("convert_to_notebook", convert_to_notebook_node)
     workflow.add_node("convert_to_pdf", convert_to_pdf_node)
     # workflow.add_node("human_feedback", wait_for_human_feedback)
@@ -353,6 +406,8 @@ def generate_assignment_workflow(input_content: str, openrouter_api_key: str, as
         # print(mermaid_code)
     except Exception as e:
         print(f"Failed to generate Mermaid diagram: {e}")
+    
+    print("worflow compiles")
 
     return graph.invoke(initial_state)
 

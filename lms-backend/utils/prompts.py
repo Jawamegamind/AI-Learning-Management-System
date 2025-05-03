@@ -208,18 +208,67 @@ def getverificationprompt(assignment, feedback_prompt):
          At the end, write the following in one line ... [[[REVIEW_SCHEME]]] = {{ 'clarity': CLARITY_SCORE, 'boilerplate': BOILERPLATE_SCORE, 'todo': TODO_SCORE, 'overlap': OVERLAP_SCORE, 'formatting': FORMATTING_SCORE, 'feedback': FEEDBACK_SCORE }}
     """
 
+# def getquizverificationprompt(quiz, feedback_prompt):
+#     return f"""
+#         You are reviewing a quiz designed to assess students' theoretical understanding and practical application of topics taught in class. The quiz content is below:
+#         =====================
+#         {quiz}
+#         =====================
+
+#         EVALUATE it STRICTLY based on the following criteria. Assign a score out of 10 for each and justify with 1-2 sentences.
+
+#         For each criterion, do the following:
+#         1. Give a score out of 10.
+#         2. Justify the score with 1-2 sentences.
+
+#         1. **Clarity and Relevance**:
+#           - Are the questions clearly worded and free from ambiguity?
+#           - Are they appropriate for the level of the course and relevant to topics taught?
+#           - Do they reflect the expected knowledge and skill level of students?
+
+#         2. **Coverage of Concepts**:
+#           - Does the quiz cover a diverse and representative set of concepts taught?
+#           - Are both theoretical and practical aspects of the topic included?
+#           - Does it balance breadth and depth appropriately?
+
+#         3. **Question Quality and Structure**:
+#           - Are MCQs structured well with plausible distractors?
+#           - Are True/False statements precise and unambiguous?
+#           - Are short/medium questions open-ended enough to assess understanding, but focused enough to guide students?
+
+#         4. **Cognitive Depth and Usefulness**:
+#           - Do questions vary in difficulty and promote higher-order thinking (not just recall)?
+#           - Are there any case-based or real-world application questions?
+#           - Does it test understanding, analysis, and application?
+
+#         5. **Task Redundancy / Overlap**:
+#           - Tasks should be distinct and may be divided into subtasks if complex.
+#           - Avoid repetition and ensure flow and progression in learning.
+
+#         6. **Feedback Incorporation**:
+#           {feedback_prompt}
+
+#          At the end, write the following in one line ... [[[REVIEW_SCHEME]]] = {{ 'clarity': CLARITY_SCORE, 'coverage': COVERAGE_SCORE, 'structure': STRUCTURE_SCORE, 'overlap': OVERLAP_SCORE, 'depth': DEPTH_SCORE, 'feedback': FEEDBACK_SCORE }}
+#     """
+
 def getquizverificationprompt(quiz, feedback_prompt):
     return f"""
-        You are reviewing a quiz designed to assess students' theoretical understanding and practical application of topics taught in class. The quiz content is below:
+    You are a meticulous and brutally honest educator tasked with dissecting and evaluating the quality of a student-designed quiz meant to assess theoretical understanding and practical application of topics taught in class.
+    Your job is not to merely review but to interrogate every choice made in the quiz—question wording, content selection, cognitive depth, and structure—with a fine-toothed comb.
+    Challenge every assumption. Be hyper-critical and assume nothing is adequate unless proven through rigor, clarity, and flawless execution.
+    Expose ambiguity, shallowness, redundancy, poor alignment with learning objectives, and any missed opportunities—no matter how subtle.
+    Even if the quiz seems serviceable, your goal is to highlight weaknesses in coverage, depth, construction, and learning value.
+    Never default to leniency. **Demand perfection, especially in the absence of prior feedback.**
+    The quiz content is below:
         =====================
         {quiz}
         =====================
 
-        EVALUATE it STRICTLY based on the following criteria. Assign a score out of 10 for each and justify with 1-2 sentences.
-
+        EVALUATE it STRICTLY based on the following criteria. Assign a score out of 10 for each and justify with detail.
+        
         For each criterion, do the following:
         1. Give a score out of 10.
-        2. Justify the score with 1-2 sentences.
+        2. Justify the score in detail.
 
         1. **Clarity and Relevance**:
           - Are the questions clearly worded and free from ambiguity?
@@ -232,6 +281,7 @@ def getquizverificationprompt(quiz, feedback_prompt):
           - Does it balance breadth and depth appropriately?
 
         3. **Question Quality and Structure**:
+          - Does the quiz contain the required 3-5 MCQs, 2-3 True/False statements, and 4-5 short/medium-length questions?
           - Are MCQs structured well with plausible distractors?
           - Are True/False statements precise and unambiguous?
           - Are short/medium questions open-ended enough to assess understanding, but focused enough to guide students?
@@ -246,10 +296,10 @@ def getquizverificationprompt(quiz, feedback_prompt):
           - Avoid repetition and ensure flow and progression in learning.
 
         6. **Feedback Incorporation**:
-          {feedback_prompt}
+          - {feedback_prompt}
 
          At the end, write the following in one line ... [[[REVIEW_SCHEME]]] = {{ 'clarity': CLARITY_SCORE, 'coverage': COVERAGE_SCORE, 'structure': STRUCTURE_SCORE, 'overlap': OVERLAP_SCORE, 'depth': DEPTH_SCORE, 'feedback': FEEDBACK_SCORE }}
-    """
+"""
 
 def getragoptimizationprompt():
   return """
