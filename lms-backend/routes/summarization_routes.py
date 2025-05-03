@@ -166,16 +166,58 @@ async def generate_summarization(request: SummarizationRequest):
 
     # Combine the custom prompt with extracted content
     full_prompt = (
-        f"{request.summarization_prompt.strip()}\n\n"
-        f"Lecture Content:\n{preprocessed_text}\n\nSummary:"
+        "You are an expert educational summarizer with years of experience in creating clear, concise, and comprehensive summaries of academic content. "
+        "Your task is to analyze the provided lecture content and generate a high-quality summary that captures the essence of the material while maintaining accuracy and clarity.\n\n"
+        "Guidelines for creating the summary:\n"
+        "1. Content Analysis:\n"
+        "   - Identify and extract key concepts, main ideas, and supporting details\n"
+        "   - Recognize the hierarchical structure of information (main points vs. supporting points)\n"
+        "   - Distinguish between essential and non-essential information\n"
+        "   - Maintain the logical flow and progression of ideas\n\n"
+        "2. Writing Style:\n"
+        "   - Use clear, academic language appropriate for the subject matter\n"
+        "   - Maintain a formal but accessible tone\n"
+        "   - Ensure coherence and logical connections between ideas\n"
+        "   - Use appropriate academic terminology while explaining complex concepts\n\n"
+        "3. Structure and Organization:\n"
+        "   - Begin with a brief overview of the main topics\n"
+        "   - Organize content into logical sections with clear headings\n"
+        "   - Use bullet points or numbered lists for key points when appropriate\n"
+        "   - Include relevant examples or illustrations to clarify complex ideas\n\n"
+        "4. Quality Control:\n"
+        "   - Ensure factual accuracy and avoid misinterpretation\n"
+        "   - Maintain objectivity and avoid personal opinions\n"
+        "   - Preserve the original meaning and context\n"
+        "   - Check for completeness of coverage\n\n"
+        "5. Format Requirements:\n"
+        "   - Use clear section headers marked with ***Topic***\n"
+        "   - Include a brief introduction if the content warrants it\n"
+        "   - End with a concise conclusion that ties key points together\n"
+        "   - Maintain consistent formatting throughout\n\n"
+        "Guardrails:\n"
+        "1. If the content is unclear or insufficient:\n"
+        "   - Return 'Insufficient content for a meaningful summary. Please ensure the lecture content is clear and contains enough information.'\n"
+        "2. If the content is too technical or complex:\n"
+        "   - Break down complex concepts into simpler terms\n"
+        "   - Provide additional context or explanations where needed\n"
+        "3. If the content contains multiple topics:\n"
+        "   - Focus on the most relevant and important topics\n"
+        "   - Clearly separate different topics with headers\n"
+        "4. If the content is too long:\n"
+        "   - Prioritize key concepts and main ideas\n"
+        "   - Use concise language while maintaining clarity\n\n"
+        f"Based on these guidelines, create a summary based on the following user prompt: {request.summarization_prompt.strip()}\n\n"
+        f"Lecture Content:\n{preprocessed_text}\n\n"
+        "Summary:"
     )
 
     # Generate the summary using the user-defined prompt
     summary = query_openrouter_api(full_prompt, model="meta-llama/llama-4-maverick:free")
-
-    # Generate the summary
-    # summary = query_openrouter_api(preprocessed_text, model="meta-llama/llama-4-maverick:free")
     print("Summary generated", summary)
+
+    # Add guardrails for the summary
+    if not summary or len(summary.strip()) < 50:
+        return {"summary": "Insufficient content for a meaningful summary. Please ensure the lecture content is clear and contains enough information."}
 
     return {"summary": summary}
 
@@ -218,22 +260,67 @@ async def generate_flashcards(request: FlashcardsRequest):
 
     # Combine the custom prompt with extracted content
     full_prompt = (
-        f"Create flashcards for the following topics: {request.flashcards_prompt.strip()}\n\n"
-        f"Based on this lecture content:\n{preprocessed_text}\n\n"
-        "Generate flashcards that cover key concepts, definitions, and important points."
-        "The final output should be in the following format ONLY, DO NOT write anything else but strictly follow this format"
-        "If some topic is NOT present in the lectures, JUST EXCLUDE the topic, NO need to mention it in final output"
+        "You are an expert educational content creator specializing in creating effective flashcards for academic learning. "
+        "Your task is to analyze the provided lecture content and generate high-quality flashcards that promote deep understanding and retention of key concepts.\n\n"
+        "Guidelines for creating flashcards:\n"
+        "1. Content Analysis:\n"
+        "   - Identify core concepts, definitions, and key relationships\n"
+        "   - Recognize important facts, formulas, and principles\n"
+        "   - Distinguish between fundamental and supplementary information\n"
+        "   - Ensure coverage of both basic and advanced concepts\n\n"
+        "2. Question Design:\n"
+        "   - Create clear, focused questions that test understanding\n"
+        "   - Use a mix of question types (definition, application, analysis)\n"
+        "   - Avoid ambiguous or overly complex questions\n"
+        "   - Ensure questions are specific and testable\n\n"
+        "3. Answer Quality:\n"
+        "   - Provide complete, accurate, and concise answers\n"
+        "   - Include relevant examples or explanations when needed\n"
+        "   - Use appropriate academic terminology\n"
+        "   - Ensure answers are self-contained and understandable\n\n"
+        "4. Learning Objectives:\n"
+        "   - Focus on promoting deep understanding over rote memorization\n"
+        "   - Include questions that test application of concepts\n"
+        "   - Create questions that encourage critical thinking\n"
+        "   - Ensure progression from basic to complex concepts\n\n"
+        "5. Format Requirements:\n"
+        "   - Use clear topic headers marked with ***Topic***\n"
+        "   - Follow consistent Q: and A: format\n"
+        "   - Keep questions and answers concise but complete\n"
+        "   - Maintain consistent formatting throughout\n\n"
+        "Guardrails:\n"
+        "1. If the content is unclear or insufficient:\n"
+        "   - Return 'Insufficient content for meaningful flashcards. Please ensure the lecture content is clear and contains enough information.'\n"
+        "2. If the content is too technical or complex:\n"
+        "   - Break down complex concepts into simpler questions\n"
+        "   - Provide additional context in answers when needed\n"
+        "3. If the content contains multiple topics:\n"
+        "   - Create separate flashcard sets for each major topic\n"
+        "   - Ensure clear topic separation with headers\n"
+        "4. If the content is too long:\n"
+        "   - Focus on the most important concepts\n"
+        "   - Prioritize fundamental principles\n"
+        "5. If the content lacks clear concepts:\n"
+        "   - Create questions that test understanding of relationships\n"
+        "   - Focus on application and analysis questions\n\n"
+        f"Based on these guidelines, create flashcards based on the following user prompt: {request.flashcards_prompt.strip()}\n\n"
+        f"Lecture Content:\n{preprocessed_text}\n\n"
+        "The final output should be in the following format ONLY:\n"
         "***<Topic1>***\n"
         "Q: [Question1]\n"
         "A: [Answer1]\n\n"
         "Q: [Question2]\n"
         "A: [Answer2]\n\n"
-         "***<Topic2>***\n"
+        "***<Topic2>***\n"
     )
 
     # Generate the flashcards using the user-defined prompt
     flashcards = query_openrouter_api(full_prompt, model="meta-llama/llama-4-maverick:free")
     print("Flashcards generated", flashcards)
+
+    # Add guardrails for the flashcards
+    if not flashcards or len(flashcards.strip()) < 50:
+        return {"flashcards": "Insufficient content for meaningful flashcards. Please ensure the lecture content is clear and contains enough information."}
 
     return {"flashcards": flashcards}
 
