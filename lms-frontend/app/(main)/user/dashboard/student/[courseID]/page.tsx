@@ -3,7 +3,7 @@
 import {useState, useLayoutEffect} from "react";
 // import axios from "axios";
 import { useParams } from "next/navigation";
-import { Box, Typography, Tabs, Tab, Grid2, Paper, List, ListItem, ListItemText, Divider, Button, Link,TextField, FormGroup, FormControlLabel, Checkbox } from "@mui/material";
+import { Box, Typography, Tabs, Tab, Grid2, Paper, List, ListItem, ListItemText, Divider, Button, Link,TextField, FormGroup, FormControl , InputLabel ,  Select,MenuItem, FormControlLabel, Checkbox } from "@mui/material";
 import { createClient } from "@/utils/supabase/client";
 import ResponsiveAppBar from "@/app/_components/navbar";
 import jsPDF from "jspdf";
@@ -11,7 +11,7 @@ import { Alert } from '@mui/material';
 import Snackbar, {SnackbarCloseReason} from '@mui/material/Snackbar';
 import LoadingModal from '../../../../../_components/LoadingModal';
 import FlashcardModal from '../../../../../_components/flashCardModal';
-import {fetchCourseDataFromID, generateSummarization, generateFlashcards} from './actions';
+import {fetchCourseDataFromID, generateSummarization, generateFlashcards, generatePracticeQuestions} from './actions';
 
 interface User {
   user_id: string;
@@ -36,7 +36,7 @@ export default function CoursePage() {
   const { courseID } = useParams();
     const [tabIndex, setTabIndex] = useState(0);
     const [course, setCourse] = useState<Course | null>(null);
-    const [activeTool, setActiveTool] = useState<null | 'summarize' | 'quiz' | 'assignment' | 'flashcards'>(null);
+    const [activeTool, setActiveTool] = useState<null | 'summarize' | 'quiz' | 'assignment' | 'flashcards' | 'practice'>(null);
     const [summarizationPrompt, setSummarizationPrompt] = useState("");
     const [flashcardsPrompt, setFlashcardsPrompt] = useState("");
     const [error, setError] = useState<string | null>(null);
@@ -49,6 +49,12 @@ export default function CoursePage() {
     const [loading, setLoading] = useState(false)
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedFlashcardData, setSelectedFlashcardData] = useState<FlashcardData | null>(null);
+    const [practicePrompt, setPracticePrompt] = useState("");
+    const [selectedPracticeLectures, setSelectedPracticeLectures] = useState<string[]>([]);
+    const [practiceDifficulty, setPracticeDifficulty] = useState<"easy" | "medium" | "hard" | "">("");
+    const [practiceGenerating, setPracticeGenerating] = useState(false);
+    const [generatedPracticeQuestions, setGeneratedPracticeQuestions] = useState("");
+
 
     // const [files, setFiles] = useState<{
     //   assignments: FileItem[];
@@ -775,10 +781,131 @@ export default function CoursePage() {
                   )}
                 </Paper>
               </Grid2>
+              <Grid2 size={{ xs:12, sm:6, md:4 }}>
+                <Paper elevation={2} sx={{ p: 2 }}>
+                  <Typography variant="subtitle1">Practice Question Generation</Typography>
+                  <Button
+                    fullWidth
+                    sx={{ mt: 1 }}
+                    variant="outlined"
+                    disabled={activeTool !== null && activeTool !== 'practice'}
+                    onClick={() => setActiveTool(activeTool === 'practice' ? null : 'practice')}
+                  >
+                    {activeTool === 'practice' ? "Close" : "Start"}
+                  </Button>
+                  <LoadingModal open={loading} title="Generating practice questions" />
+
+                  {activeTool === 'practice' && (
+                    <Box mt={2}>
+                      <TextField
+                        fullWidth
+                        label="What kind of questions should be generated?"
+                        value={practicePrompt}
+                        onChange={(e) => setPracticePrompt(e.target.value)}
+                        multiline
+                        rows={3}
+                      />
+                      {error && (
+                        <Typography color="error" mt={1}>
+                          {error}
+                        </Typography>
+                      )}
+
+                      <FormControl fullWidth sx={{ mt: 2 }}>
+                        <InputLabel>Difficulty</InputLabel>
+                        <Select
+                          value={practiceDifficulty}
+                          label="Difficulty"
+                          onChange={(e) => setPracticeDifficulty(e.target.value as "easy" | "medium" | "hard")}
+                        >
+                          <MenuItem value="easy">Easy</MenuItem>
+                          <MenuItem value="medium">Medium</MenuItem>
+                          <MenuItem value="hard">Hard</MenuItem>
+                        </Select>
+
+                      </FormControl>
+
+                      <FormGroup sx={{ mt: 2 }}>
+                        <Typography variant="subtitle2" gutterBottom>Select lectures to include:</Typography>
+                        {files
+                          .filter(f => f.name.startsWith("lectures/"))
+                          .map((file) => (
+                            <FormControlLabel
+                              key={file.name}
+                              control={
+                                <Checkbox
+                                  checked={selectedPracticeLectures.includes(file.url)}
+                                  onChange={(e) => {
+                                    const checked = e.target.checked;
+                                    setSelectedPracticeLectures(prev =>
+                                      checked
+                                        ? [...prev, file.url]
+                                        : prev.filter(url => url !== file.url)
+                                    );
+                                  }}
+                                />
+                              }
+                              label={file.name.replace("lectures/", "")}
+                            />
+                          ))}
+                      </FormGroup>
+
+                      <Button
+                        sx={{ mt: 2 }}
+                        variant="contained"
+                        onClick={async () => {
+                          if (!practicePrompt.trim()) {
+                            setError("Please enter a prompt");
+                            return;
+                          }
+                          if (!practiceDifficulty) {
+                            setError("Please select a difficulty");
+                            return;
+                          }
+
+                          setPracticeGenerating(true);
+                          setError(null);
+
+                          try {
+                            setLoading(true);
+                            const result = await generatePracticeQuestions(selectedPracticeLectures, practicePrompt, practiceDifficulty);
+                            setLoading(false);
+                            setGeneratedPracticeQuestions(result);
+                            handleClick("Practice questions generated successfully.", "success");
+                          } catch (err: any) {
+                            setLoading(false);
+                            setError(err?.message || "Failed to generate practice questions.");
+                            handleClick("Failed to generate practice questions.", "error");
+                          } finally {
+                            setPracticeGenerating(false);
+                            setSelectedPracticeLectures([]);
+                          }
+                        }}
+                      >
+                        {practiceGenerating ? "Generating..." : "Generate"}
+                      </Button>
+
+                      {generatedPracticeQuestions && (
+                        <Box mt={2}>
+                          <Typography variant="subtitle2">Generated Practice Questions:</Typography>
+                          <Paper elevation={1} sx={{ p: 2, maxHeight: 300, overflowY: 'auto', whiteSpace: 'pre-wrap' }}>
+                            {generatedPracticeQuestions}
+                          </Paper>
+                          <Button sx={{ mt: 2 }} variant="outlined" onClick={() => downloadPDF(generatedPracticeQuestions)}>
+                            Download as PDF
+                          </Button>
+                        </Box>
+                      )}
+                    </Box>
+                  )}
+                </Paper>
+              </Grid2>
+
             </Grid2>
           </Box>
         )}
          <Box p={4}>
+
         {/* Submissions Tab */}
         {tabIndex === 5 && (
           <Box>

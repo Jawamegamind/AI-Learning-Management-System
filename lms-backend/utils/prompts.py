@@ -23,7 +23,7 @@ def getmetaprompt(raw_prompt, context,option):
 
             Respond ONLY with the structured assignment plan or invalid message.
         """
-    else:
+    elif option == 'quiz' :
         return  f"""
             You are an expert educational content creator specializing in designing conceptual quizzes to test theoretical understanding in subjects like machine learning, AI, data science, and fullstack development.
 
@@ -33,18 +33,35 @@ def getmetaprompt(raw_prompt, context,option):
             {context}
             === End Context ===
 
-            Determine whether this is a valid and meaningful topic for a conceptual quiz. If valid, generate a quiz that includes:
+            Determine whether this is a valid and meaningful topic for a conceptual quiz.
 
-            1. 3–5 Multiple Choice Questions (MCQs) — clearly indicate the correct answer with reasoning.
-            2. 2–3 True/False questions — also justify each answer briefly.
-            3. 4-5 Short Answer or Reasoning-based questions — prompt students to explain concepts or compare ideas in 1–3 sentences.
+            If valid, consider the context to generate the list of ALL QUIZ topics (major or minor) that should be included and are worth testing.
 
-            Ensure the quiz focuses on **core concepts**, **theory**, and **understanding**, not implementation or coding.
+            Use the context provided to guide the level of difficulty, terminology, and topics.
 
-            Use the context provided to guide the level of difficulty, terminology, and topics. If the prompt is invalid or nonsensical, respond with: "Invalid prompt: [reason]".
+            If the prompt is invalid or nonsensical, respond with: "Invalid prompt: [reason]".
 
-            Respond ONLY with the generated quiz or invalid message.
+            Respond ONLY with the exhaustive topic list or invalid message.
         """
+    else:   #'practice'
+        return f"""
+            You are an expert educational content creator specializing in designing conceptual quizzes for practice with solutions in subjects like machine learning, AI, data science, and fullstack development.
+
+            Given the raw prompt: "{raw_prompt}", and the following context from course materials:
+
+            === Context ===
+            {context}
+            === End Context ===
+
+            Determine whether this is a valid and meaningful topic for a conceptual quiz.
+
+             If valid, consider the context to generate the list of ALL QUIZ topics (major or minor) that should be included and are worth testing.
+
+            If the prompt is invalid or nonsensical, respond with: "Invalid prompt: [reason]".
+
+            Respond ONLY with the exhaustive topic list or invalid message.
+        """
+
 
 
 def getgenerationprompt(prompt, option):
@@ -54,7 +71,7 @@ def getgenerationprompt(prompt, option):
 
             For each coding task:
             - Use markdown to describe the task.
-            - Add appropriate Python code cells with TODO brackets.
+            - Add appropriate Python code cells with TODO hints in comments.
             - Import necessary libraries.
             - Initialize basic models or datasets.
             - Ensure logical progression (with NO OVERLAP) from task to task.
@@ -65,7 +82,7 @@ def getgenerationprompt(prompt, option):
             Return the assignment in plain text with clear separation between markdown and code blocks.
             ALWAYS enclose code blocks starting with <```python> format and ending in <```> format.
         """
-    else:
+    elif option == 'quiz' :
         return f"""
             You are an AI quiz generator. Convert the following structured quiz plan into a well-formatted, text-based quiz aimed at testing theoretical understanding of the topic.
 
@@ -96,6 +113,38 @@ def getgenerationprompt(prompt, option):
 
             Return the quiz in plain text and write according to the instructions above.
         """
+    else:  #'practice'
+        return f"""
+            You are an AI quiz generator. Convert the following structured quiz plan into a well-formatted, text-based quiz aimed at testing theoretical understanding of the topic.
+
+            Prompt:
+            {prompt}
+
+            Generate the quiz with the following format:
+            1. **Multiple Choice Questions (MCQs)**
+               - List 3–5 MCQs.
+               - Use clear formatting (e.g., A, B, C, D).
+               - These should test **theoretical understanding** of the ideas.
+
+            2. **True/False Questions**
+               - List 4–5 T/F questions.
+               - These should test **factual knowledge** of the ideas.
+
+            3. **Reasoning-Based or Short Answer Questions**
+               - Ask 4–5 conceptual or comparative / analytical questions.
+               - These should test **practicality and applications** of the concepts.
+
+            Ensure questions are concept-focused and avoid code-level implementation unless it's conceptual (e.g., algorithm behavior, model choices, complexity tradeoffs).
+
+            Provide solutions for all questions (**with working where required**).
+
+            Anything you want to be HIGHLIGHTED in the final file should be enclosed within 3 asterisks, example: ***MCQs***
+
+            DO NOT unnecessarily include other symbols in your text like double asterisks ** or ## signs etc. Only for formatting, use triple asterisks.
+
+            Return the quiz in plain text and write according to the instructions above.
+        """
+
 
 def getgenerationwithfeedbackprompt(assignment, feedback_prompt):
     return f"""

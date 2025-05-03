@@ -11,7 +11,7 @@ from database.retriever import Retriever
 from reportlab.lib.pagesizes import LETTER
 from langgraph.graph import StateGraph, START, END
 from sentence_transformers import SentenceTransformer
-from models.generation_model import AssignmentState
+from models.generation_model import AssignmentState, PracticeQAState
 from nbformat.v4 import new_notebook, new_code_cell, new_markdown_cell
 from .prompts import getmetaprompt, getgenerationprompt, getquizverificationprompt, getgenerationwithfeedbackprompt, getragoptimizationprompt, QUIZ_COMPONENT_WEIGHTAGES
 
@@ -355,3 +355,160 @@ def generate_assignment_workflow(input_content: str, openrouter_api_key: str, as
         print(f"Failed to generate Mermaid diagram: {e}")
 
     return graph.invoke(initial_state)
+
+
+
+
+
+
+
+
+
+
+
+############ functions for generate practice Q/As workflow ####################
+
+
+
+def extract_prompt_node(state: PracticeQAState, api_key: str) -> dict:
+
+    raw_prompt = state['input_content']
+    optimized_query = state.get('optimized_query', raw_prompt)  # Fallback to raw_prompt if optimized_query is missing
+    urls = state.get('urls', None)
+
+    # Initialize retriever
+    retriever = Retriever()
+
+    # Generate embedding for optimized_query
+    query_embedding = embedding_model.encode(optimized_query).tolist()
+
+    # Fetch context using retriever
+    context = ""
+    try:
+        if urls:
+            # Get document IDs from URLs
+            relevant_doc_ids = retriever.get_document_ids_by_urls(urls)
+            if relevant_doc_ids:
+                # Use filtered hybrid search to get relevant chunks
+                results = retriever.filtered_hybrid_search(
+                    query_text=optimized_query,
+                    query_embedding=query_embedding,
+                    relevant_doc_ids=relevant_doc_ids,
+                    limit_rows= 10
+                )
+                if len(results) == 0:
+                    print("no relevant chunk found from the docs")
+                else:
+                    print("relevant chunks found from docs")
+                    safe_results = [
+                       r[1].encode('utf-8', errors='replace').decode('utf-8')
+                        for r in results
+                    ]
+                    print(safe_results)
+                # Format context from results (id, content, embedding_id, similarity)
+                context = "\n".join(safe_results)
+            else:
+                context = "No documents found for provided URLs."
+        else:
+            # Use hybrid search for general context
+            results = retriever.hybrid_search(
+                query_text=optimized_query,
+                query_embedding=query_embedding,
+                limit_rows= 10
+            )
+            safe_results = [
+                        r[1].encode('utf-8', errors='replace').decode('utf-8')
+                        for r in results
+                    ]
+            context = "\n".join(safe_results)
+        if not context:
+            context = "No relevant documents found."
+        with open('retrieval_output.txt', 'a', encoding='utf-8') as f:
+            f.write(f"--- New Retrieval ---\n")
+            f.write(f"Optimized Query: {optimized_query}\n")
+            f.write(f"Context:\n{context}\n")
+            f.write(f"--- End Retrieval ---\n")
+
+
+    except Exception as e:
+        print(f"Retriever error: {e}")
+        context = "Failed to retrieve context."
+
+    # Augment metaprompt with retrieved context, using raw_prompt
+    print("metaprompt node call for practice Q/As")
+    metaprompt = getmetaprompt(raw_prompt, context, 'practice')
+    # print("metaprompt ....",metaprompt)
+    output = query_openrouter(metaprompt, api_key)
+    print("[METAPROMPT]========", output)
+    if output.lower().startswith("invalid prompt"):
+        return {**state, "practiceqas": output, "status": "invalid"}
+    return {**state, "practiceqas": output, "status": "valid"}
+
+
+def retrieval_qa_node(state: PracticeQAState, api_key: str) -> PracticeQAState:
+    raw_prompt = state['input_content']
+    rag_query_optimization_system_prompt = getragoptimizationprompt()
+    optimization_prompt = f"{rag_query_optimization_system_prompt}\n\nInput:\n{raw_prompt}\n\nOptimized Query:"
+    optimized_query = query_openrouter(optimization_prompt, api_key)
+    print("Optimized Query:", optimized_query)
+    return {**state, "optimized_query": optimized_query}
+
+
+def generate_practice_qa_node(state: PracticeQAState, api_key: str) -> dict:
+    print("gen----")
+    prompt = state["practiceqas"]
+    print("FINALPROMPT-FOR-PRACTICE-QA",prompt)
+    gen_prompt = getgenerationprompt(prompt, 'practice')
+    gen_prompt += f' All the generated questions MUST meet this difficulty level: {state["difficulty"].upper()}.'
+    print(gen_prompt)
+    result = query_openrouter(gen_prompt, api_key)
+
+    state["practiceqas"] = result
+    print("[PRACTICE-Q-A-s]========", result)
+    return {**state, "practiceqas": result}
+
+def generate_practice_qa_workflow(input_content: str, openrouter_api_key: str, difficulty: str, urls: Optional[List[str]] = None) -> dict:
+    workflow = StateGraph(PracticeQAState)
+
+    # Nodes
+    workflow.add_node("extract_contextualized_prompt", lambda s: extract_prompt_node(s, openrouter_api_key))
+    workflow.add_node("retrieval", lambda s: retrieval_qa_node(s, openrouter_api_key))
+    workflow.add_node("generate_qa", lambda s: generate_practice_qa_node(s, openrouter_api_key))
+
+    is_lec_urls = urls is not None and len(urls) > 0
+
+    # Edges
+    workflow.add_edge(START, "extract_contextualized_prompt")
+    workflow.add_conditional_edges("extract_contextualized_prompt", lambda s: s["status"], {
+        "invalid": END,
+        "valid": "retrieval" if is_lec_urls else "generate_qa"
+    })
+
+    if is_lec_urls:
+        workflow.add_edge("retrieval", "generate_qa")
+
+    workflow.add_edge("generate_qa", END)
+
+    graph = workflow.compile()
+
+    initial_state = {
+        "input_content": input_content,
+        "urls": urls,
+        "difficulty": difficulty,
+        "topics": [],
+        "status": "pending",
+        "optimized_query" : "",
+        "practiceqas": ""
+    }
+
+    # try:
+    #     mermaid_code = graph.get_graph().draw_mermaid()
+    #     with open("practice_qa_graph.mmd", "w", encoding="utf-8") as f:
+    #         f.write(mermaid_code)
+    #     print("Mermaid diagram saved as practice_qa_graph.mmd")
+    #     print("Render it at: https://mermaid.live/")
+    # except Exception as e:
+    #     print(f"Failed to generate Mermaid diagram: {e}")
+
+    return graph.invoke(initial_state)
+

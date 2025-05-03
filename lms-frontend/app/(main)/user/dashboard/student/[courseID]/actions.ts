@@ -31,3 +31,24 @@ export async function generateFlashcards(flashcardsPrompt: string, selectedFlash
     });
     return response.data.flashcards;
 }
+
+export async function generatePracticeQuestions(selectedPracticeLectures: string[], practicePrompt: string, practiceDifficulty:string ) {
+    console.log(practicePrompt,  selectedPracticeLectures,practiceDifficulty )
+    try {
+        const response = await axios.post(`http://localhost:8000/api/generation/generate-practiceqas`, {
+            prompt: practicePrompt,
+            lecture_urls: selectedPracticeLectures,
+            difficulty: practiceDifficulty
+        });
+        // console.log(response.data)
+        if (response.data.status === "success") {
+            return response.data.practice;
+        } else {
+            throw new Error("Generation failed");
+        }
+    } catch (error) {
+      console.error("Generation error:", error);
+      throw error;
+    }
+
+}
