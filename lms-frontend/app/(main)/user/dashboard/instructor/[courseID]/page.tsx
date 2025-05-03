@@ -358,7 +358,7 @@ export default function CoursePage() {
 
     for (const folder of folders) {
       let path = `${courseID}/${folder}`;
-      
+
       // For user-specific content, we need to list all user directories
       if (folder === "summarizations" || folder === "flashcards") {
         // First list all user directories

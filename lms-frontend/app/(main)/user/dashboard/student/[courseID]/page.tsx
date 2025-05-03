@@ -10,6 +10,7 @@ import jsPDF from "jspdf";
 import { Alert } from '@mui/material';
 import Snackbar, {SnackbarCloseReason} from '@mui/material/Snackbar';
 import LoadingModal from '../../../../../_components/LoadingModal';
+import FlashcardModal from '../../../../../_components/flashCardModal';
 import {fetchCourseDataFromID, generateSummarization, generateFlashcards} from './actions';
 
 interface User {
@@ -46,6 +47,8 @@ export default function CoursePage() {
     const [generatedSummary, setGeneratedSummary] = useState<string | null>(null);
     const [generatedFlashcards, setGeneratedFlashcards] = useState<string | null>(null);
     const [loading, setLoading] = useState(false)
+    const [modalOpen, setModalOpen] = useState(false);
+    const [selectedFlashcardData, setSelectedFlashcardData] = useState<FlashcardData | null>(null);
 
     // const [files, setFiles] = useState<{
     //   assignments: FileItem[];
@@ -238,11 +241,11 @@ export default function CoursePage() {
         doc.text(line, margin, y);
         y += lineHeight;
       });
-    
+
       const pdfBlob = doc.output("blob");
-    
-      const fileName = `flashcards_${Date.now()}.pdf`;
-      const filePath = `${courseID}/flashcards/${userAuth.id}/${fileName}`;
+
+      const fileName = `flashcards_${Date.now()}`;
+      const filePath = `${courseID}/flashcards/${userAuth.id}/${fileName}.pdf`;
 
       const { error } = await supabase.storage
         .from("course-materials")
@@ -256,6 +259,45 @@ export default function CoursePage() {
         console.error("Upload failed:", error.message);
         handleClick("Failed to upload flashcards PDF.", "error");
       } else {
+         // --- Convert to JSON and Upload ---
+        const flashcardsJSON: Record<string, { Q: string; A: string }[]> = {};
+        const lines = flashcardsText.split("\n").map(line => line.trim()).filter(Boolean);
+
+        let currentTopic = "";
+        let i = 0;
+        while (i < lines.length) {
+          const line = lines[i];
+
+          if (line.startsWith("**") && line.endsWith("**")) {
+            currentTopic = line.replace(/\*\*/g, "").trim();
+            if (!flashcardsJSON[currentTopic]) {
+              flashcardsJSON[currentTopic] = [];
+            }
+            i++;
+          } else if (line.startsWith("Q:") && lines[i + 1]?.startsWith("A:")) {
+            const question = line.replace(/^Q:\s*/, "").trim();
+            const answer = lines[i + 1].replace(/^A:\s*/, "").trim();
+            flashcardsJSON[currentTopic].push({ Q: question, A: answer });
+            i += 2;
+          } else {
+            i++;
+          }
+        }
+
+        const jsonBlob = new Blob([JSON.stringify(flashcardsJSON, null, 2)], { type: "application/json" });
+        const jsonFilePath = `${courseID}/flashcards/${userAuth.id}/${fileName}.json`;
+        const { error: jsonError } = await supabase.storage
+          .from("course-materials")
+          .upload(jsonFilePath, jsonBlob, {
+            cacheControl: "3600",
+            upsert: true,
+            contentType: "application/json",
+          });
+
+        if (jsonError) {
+          console.error("JSON upload failed:", jsonError.message);
+          handleClick("Flashcards PDF uploaded, but JSON upload failed.", "warning");
+        }
         handleClick("Flashcards uploaded successfully!", "success");
         // Refetch files to show the new flashcards
         const fetchFiles = async () => {
@@ -363,10 +405,10 @@ export default function CoursePage() {
               };
             })
           );
-  
+
           allFiles.push(...fileItems.filter((item): item is FileItem => item !== null));
         }
-  
+
         setFiles(allFiles);
       };
 
@@ -435,31 +477,80 @@ export default function CoursePage() {
                   {folder}
                 </Typography>
 
-                {/* File List */}
                 <List>
-                  {files.filter((f) => f.name.startsWith(`${folder}/`)).map((file, index, arr) => {
-                    const fileName = file.name.replace(`${folder}/`, "");
-                    return (
-                      <Box key={file.name}>
-                        <ListItem>
-                          <ListItemText
-                            primary={
-                              <Link href={file.url} target="_blank" rel="noopener noreferrer" underline="hover">
-                                {fileName}
-                              </Link>
+                  {files
+                    .filter((f) => f.name.startsWith(`${folder}/`))
+                    .filter((f) => folder !== "flashcards" || f.name.endsWith(".pdf")) // Filter only .pdf for flashcards
+                    .map((file, index, arr) => {
+                      const fileName = file.name.replace(`${folder}/`, "");
+
+                      return (
+                        <Box key={file.name}>
+                          <ListItem
+                            secondaryAction={
+                              folder === "flashcards" && fileName.endsWith(".pdf") ? (
+                                <Button
+                                  variant="outlined"
+                                  onClick={async () => {
+                                    try {
+                                      const jsonFilePath = `${courseID}/flashcards/${userAuth.id}/${fileName.replace(".pdf", ".json")}`;
+
+                                      const { data, error } = await supabase
+                                        .storage
+                                        .from("course-materials")
+                                        .download(jsonFilePath);
+
+                                      if (error) {
+                                        console.error("Error fetching JSON:", error.message);
+                                        handleClick("Failed to load flashcard content.", "error");
+                                        return;
+                                      }
+
+                                      const text = await data.text();
+                                      const parsed = JSON.parse(text);
+                                      setSelectedFlashcardData(parsed);
+                                      setModalOpen(true);
+                                    } catch (err) {
+                                      console.error("JSON parsing error:", err);
+                                      handleClick("Invalid flashcard data format.", "error");
+                                    }
+                                  }}
+                                >
+                                  View Flashcards
+                                </Button>
+                              ) : null
                             }
-                            secondary={`Uploaded to ${folder}`}
-                          />
-                        </ListItem>
-                        {index < arr.length - 1 && <Divider />}
-                      </Box>
-                    );
-                  })}
+                          >
+                            <ListItemText
+                              primary={
+                                <Link href={file.url} target="_blank" rel="noopener noreferrer" underline="hover">
+                                  {fileName}
+                                </Link>
+                              }
+                              secondary={`Uploaded to ${folder}`}
+                            />
+                          </ListItem>
+
+                          {index < arr.length - 1 && <Divider />}
+                        </Box>
+                      );
+                    })}
                 </List>
               </Box>
             ))}
+
+            {/* Modal for flashcards */}
+            {selectedFlashcardData && (
+              <FlashcardModal
+                open={modalOpen}
+                onClose={() => setModalOpen(false)}
+                flashcardData={selectedFlashcardData}
+              />
+            )}
           </Box>
         )}
+
+
 
 
         {tabIndex === 3 && (

@@ -22,7 +22,7 @@ summarization_router = APIRouter()
 supabase = create_supabase_client()
 
 # Defining helper functions for summarization
-# Function for extracting text from a variety of file types 
+# Function for extracting text from a variety of file types
 def extract_text_from_file(file_path):
     if file_path.endswith('.pdf'):
         return extract_text_from_pdf(file_path)
@@ -33,7 +33,7 @@ def extract_text_from_file(file_path):
     else:
         raise ValueError(f"Unsupported file type: {file_path}")
 
-# Function for extracting text from a PDF file 
+# Function for extracting text from a PDF file
 def extract_text_from_pdf(file_path):
     with open(file_path, 'rb') as file:
         reader = pypdf.PdfReader(file)
@@ -41,8 +41,8 @@ def extract_text_from_pdf(file_path):
         for page in reader.pages:
             text += page.extract_text()
         return text
-    
-# Function for extracting text from a Docx file 
+
+# Function for extracting text from a Docx file
 def extract_text_from_docx(file_path):
     doc = docx.Document(file_path)
     text = ''
@@ -175,7 +175,7 @@ async def generate_summarization(request: SummarizationRequest):
 
     # Generate the summary
     # summary = query_openrouter_api(preprocessed_text, model="meta-llama/llama-4-maverick:free")
-    print("Summary generated", summary) 
+    print("Summary generated", summary)
 
     return {"summary": summary}
 
@@ -220,15 +220,20 @@ async def generate_flashcards(request: FlashcardsRequest):
     full_prompt = (
         f"Create flashcards for the following topics: {request.flashcards_prompt.strip()}\n\n"
         f"Based on this lecture content:\n{preprocessed_text}\n\n"
-        "Format each flashcard as:\n"
-        "Q: [Question]\n"
-        "A: [Answer]\n\n"
         "Generate flashcards that cover key concepts, definitions, and important points."
+        "The final output should be in the following format ONLY, DO NOT write anything else but strictly follow this format"
+        "If some topic is NOT present in the lectures, JUST EXCLUDE the topic, NO need to mention it in final output"
+        "***<Topic1>***\n"
+        "Q: [Question1]\n"
+        "A: [Answer1]\n\n"
+        "Q: [Question2]\n"
+        "A: [Answer2]\n\n"
+         "***<Topic2>***\n"
     )
 
     # Generate the flashcards using the user-defined prompt
     flashcards = query_openrouter_api(full_prompt, model="meta-llama/llama-4-maverick:free")
-    print("Flashcards generated", flashcards) 
+    print("Flashcards generated", flashcards)
 
     return {"flashcards": flashcards}
-    
+
