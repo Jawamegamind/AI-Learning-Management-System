@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from database.supabase_db import create_supabase_client
-from models.summarization_model import SummarizationRequest, FlashcardsRequest
+from models.summarization_model import SummarizationRequest, FlashcardsRequest, ChatRequest
 import pypdf
 import os
 import requests
@@ -323,4 +323,72 @@ async def generate_flashcards(request: FlashcardsRequest):
         return {"flashcards": "Insufficient content for meaningful flashcards. Please ensure the lecture content is clear and contains enough information."}
 
     return {"flashcards": flashcards}
+
+@summarization_router.post("/chat_with_lecture")
+async def chat_with_lecture(request: ChatRequest):
+    print("Chat request received at backend", request)
+
+    combined_text = ""
+
+    for url in request.lecture_urls:
+        try:
+            # Download the file from the Supabase signed URL
+            response = requests.get(url)
+            response.raise_for_status()
+
+            # Create a temporary file and write the content
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                tmp.write(response.content)
+                tmp_path = tmp.name
+
+            print(f"Downloaded lecture file to temp path: {tmp_path}")
+
+            # Extract text from the downloaded file
+            text = extract_text_from_file(tmp_path)
+            combined_text += text + "\n"
+
+            # Optionally delete the temp file
+            os.remove(tmp_path)
+
+        except Exception as e:
+            print(f"Error processing file {url}: {e}")
+            continue
+
+    if not combined_text.strip():
+        return {"response": "No text could be extracted from the provided files."}
+
+    # Preprocess the extracted text
+    preprocessed_text = preprocess_text(combined_text)
+
+    # Format conversation history
+    conversation_context = ""
+    for msg in request.conversation_history:
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+        conversation_context += f"{role}: {content}\n"
+
+    # Combine the custom prompt with extracted content and conversation history
+    full_prompt = (
+        "You are an expert educational assistant that helps students understand lecture content through conversation. "
+        "You have access to the lecture material and can answer questions, explain concepts, and provide additional context.\n\n"
+        "Guidelines for the conversation:\n"
+        "1. Always base your responses on the actual lecture content\n"
+        "2. Be clear and concise in your explanations\n"
+        "3. If asked about something not covered in the lecture, say so\n"
+        "4. Use examples from the lecture when possible\n"
+        "5. Maintain a helpful and educational tone\n\n"
+        f"Previous conversation:\n{conversation_context}\n\n"
+        f"Lecture Content:\n{preprocessed_text}\n\n"
+        f"User's latest message: {request.message}\n\n"
+        "Your response:"
+    )
+
+    # Generate the response using the user's message and conversation history
+    response = query_openrouter_api(full_prompt, model="meta-llama/llama-4-maverick:free")
+    print("Response generated", response)
+
+    if not response or len(response.strip()) < 10:
+        return {"response": "I apologize, but I couldn't generate a meaningful response. Please try rephrasing your question."}
+
+    return {"response": response}
 

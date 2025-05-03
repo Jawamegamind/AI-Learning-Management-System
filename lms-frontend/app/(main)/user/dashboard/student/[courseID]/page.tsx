@@ -11,7 +11,7 @@ import { Alert } from '@mui/material';
 import Snackbar, {SnackbarCloseReason} from '@mui/material/Snackbar';
 import LoadingModal from '../../../../../_components/LoadingModal';
 import FlashcardModal from '../../../../../_components/flashCardModal';
-import {fetchCourseDataFromID, generateSummarization, generateFlashcards, generatePracticeQuestions} from './actions';
+import {fetchCourseDataFromID, generateSummarization, generateFlashcards, generatePracticeQuestions, chatWithLecture} from './actions';
 
 interface User {
   user_id: string;
@@ -32,11 +32,23 @@ interface Course {
   // Add other properties of the course object if needed
 }
 
+interface FlashcardData {
+  [key: string]: {
+    Q: string;
+    A: string;
+  }[];
+}
+
+interface ChatMessage {
+    role: 'user' | 'assistant';
+    content: string;
+}
+
 export default function CoursePage() {
   const { courseID } = useParams();
     const [tabIndex, setTabIndex] = useState(0);
     const [course, setCourse] = useState<Course | null>(null);
-    const [activeTool, setActiveTool] = useState<null | 'summarize' | 'quiz' | 'assignment' | 'flashcards' | 'practice'>(null);
+    const [activeTool, setActiveTool] = useState<null | 'summarize' | 'quiz' | 'assignment' | 'flashcards' | 'practice' | 'chat'>(null);
     const [summarizationPrompt, setSummarizationPrompt] = useState("");
     const [flashcardsPrompt, setFlashcardsPrompt] = useState("");
     const [error, setError] = useState<string | null>(null);
@@ -54,7 +66,10 @@ export default function CoursePage() {
     const [practiceDifficulty, setPracticeDifficulty] = useState<"easy" | "medium" | "hard" | "">("");
     const [practiceGenerating, setPracticeGenerating] = useState(false);
     const [generatedPracticeQuestions, setGeneratedPracticeQuestions] = useState("");
-
+    const [chatMessage, setChatMessage] = useState("");
+    const [selectedChatLectures, setSelectedChatLectures] = useState<string[]>([]);
+    const [chatGenerating, setChatGenerating] = useState(false);
+    const [conversationHistory, setConversationHistory] = useState<ChatMessage[]>([]);
 
     // const [files, setFiles] = useState<{
     //   assignments: FileItem[];
@@ -422,6 +437,36 @@ export default function CoursePage() {
       fetchFiles();
     }, [courseID, userAuth?.id]);
 
+    const handleChatSubmit = async () => {
+        if (!chatMessage.trim()) {
+            setError("Please enter a message");
+            return;
+        }
+
+        setChatGenerating(true);
+        setError(null);
+
+        try {
+            // Add user message to conversation history
+            const userMessage: ChatMessage = { role: 'user', content: chatMessage };
+            setConversationHistory(prev => [...prev, userMessage]);
+
+            const response = await chatWithLecture(chatMessage, selectedChatLectures, conversationHistory);
+            
+            // Add assistant response to conversation history
+            const assistantMessage: ChatMessage = { role: 'assistant', content: response };
+            setConversationHistory(prev => [...prev, assistantMessage]);
+            
+            setChatMessage("");
+            handleClick("Message sent successfully.", "success");
+        } catch (err: any) {
+            setError(err?.message || "Failed to send message. Please try again.");
+            handleClick("Failed to send message. Please try again.", "error");
+        } finally {
+            setChatGenerating(false);
+        }
+    };
+
   return (
     <Box>
       {/* Navbar */}
@@ -555,9 +600,6 @@ export default function CoursePage() {
             )}
           </Box>
         )}
-
-
-
 
         {tabIndex === 3 && (
           <Box>
@@ -896,6 +938,88 @@ export default function CoursePage() {
                           </Button>
                         </Box>
                       )}
+                    </Box>
+                  )}
+                </Paper>
+              </Grid2>
+
+              <Grid2 size={{ xs:12, sm:6, md:4 }}>
+                <Paper elevation={2} sx={{ p: 2 }}>
+                  <Typography variant="subtitle1">Talk to Your Lecture</Typography>
+                  <Button
+                    fullWidth
+                    sx={{ mt: 1 }}
+                    variant="outlined"
+                    disabled={activeTool !== null && activeTool !== 'chat'}
+                    onClick={() => setActiveTool(activeTool === 'chat' ? null : 'chat')}
+                  >
+                    {activeTool === 'chat' ? "Close" : "Start"}
+                  </Button>
+
+                  {activeTool === 'chat' && (
+                    <Box mt={2}>
+                      <Box sx={{ maxHeight: 300, overflowY: 'auto', mb: 2, p: 2, bgcolor: 'background.paper' }}>
+                        {conversationHistory.map((msg, index) => (
+                          <Box key={index} mb={1}>
+                            <Typography variant="subtitle2" color={msg.role === 'user' ? 'primary' : 'secondary'}>
+                              {msg.role === 'user' ? 'You' : 'Assistant'}:
+                            </Typography>
+                            <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                              {msg.content}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
+
+                      <FormGroup sx={{ mt: 2 }}>
+                        <Typography variant="subtitle2" gutterBottom>Select lectures to chat with:</Typography>
+                        {files
+                          .filter(f => f.name.startsWith("lectures/"))
+                          .map((file) => (
+                            <FormControlLabel
+                              key={file.name}
+                              control={
+                                <Checkbox
+                                  checked={selectedChatLectures.includes(file.url)}
+                                  onChange={(e) => {
+                                    const checked = e.target.checked;
+                                    setSelectedChatLectures(prev =>
+                                      checked
+                                        ? [...prev, file.url]
+                                        : prev.filter(url => url !== file.url)
+                                    );
+                                  }}
+                                />
+                              }
+                              label={file.name.replace("lectures/", "")}
+                            />
+                          ))}
+                      </FormGroup>
+
+                      <TextField
+                        fullWidth
+                        label="Type your message"
+                        value={chatMessage}
+                        onChange={(e) => setChatMessage(e.target.value)}
+                        multiline
+                        rows={2}
+                        sx={{ mt: 2 }}
+                      />
+
+                      {error && (
+                        <Typography color="error" mt={1}>
+                          {error}
+                        </Typography>
+                      )}
+
+                      <Button
+                        sx={{ mt: 2 }}
+                        variant="contained"
+                        onClick={handleChatSubmit}
+                        disabled={chatGenerating}
+                      >
+                        {chatGenerating ? "Sending..." : "Send"}
+                      </Button>
                     </Box>
                   )}
                 </Paper>

@@ -52,3 +52,18 @@ export async function generatePracticeQuestions(selectedPracticeLectures: string
     }
 
 }
+
+export async function chatWithLecture(message: string, selectedLectures: string[], conversationHistory: { role: string; content: string }[]) {
+    console.log(message, selectedLectures, conversationHistory);
+    try {
+        const response = await axios.post(`http://localhost:8000/api/summarization/chat_with_lecture`, {
+            message,
+            lecture_urls: selectedLectures,
+            conversation_history: conversationHistory
+        });
+        return response.data.response;
+    } catch (error) {
+        console.error("Chat error:", error);
+        throw error;
+    }
+}
