@@ -225,48 +225,156 @@ export default function CoursePage() {
     }
   };
 
+  // const fetchFiles = async () => {
+  //   // const folders = ["assignments", "quizzes", "lectures", "summarizations"];
+  //   const folders = ["assignments", "quizzes", "lectures", "summarizations", "quiz_solutions", "assignment_solutions", "quiz_submissions"];
+  //   const allFiles: FileItem[] = [];
+
+  //   for (const folder of folders) {
+  //     const { data, error } = await supabase.storage.from("course-materials").list(`${courseID}/${folder}/`, {
+  //       limit: 100,
+  //       offset: 0,
+  //       sortBy: { column: "name", order: "asc" },
+  //     });
+
+  //     if (error) {
+  //       console.error(`Failed to list files in ${folder}:`, error.message);
+  //       continue;
+  //     }
+
+  //     const fileItems: FileItem[] = await Promise.all(
+  //       (data || []).map(async (item) => {
+  //         const filePath = `${courseID}/${folder}/${item.name}`;
+
+  //         const { data: signedUrlData, error: urlError } = await supabase.storage
+  //           .from("course-materials")
+  //           .createSignedUrl(filePath, 60 * 60); // 1-hour expiry
+
+  //         if (urlError) {
+  //           console.error(`Failed to create signed URL for ${filePath}:`, urlError.message);
+  //         }
+
+  //         return {
+  //           name: `${folder}/${item.name}`, // include folder path
+  //           url: signedUrlData?.signedUrl ?? "#",
+  //         };
+  //       })
+  //     );
+
+  //     allFiles.push(...fileItems);
+  //   }
+
+  //   setFiles(allFiles);
+  //   // console.log(allFiles)
+  // };
   const fetchFiles = async () => {
-    // const folders = ["assignments", "quizzes", "lectures", "summarizations"];
-    const folders = ["assignments", "quizzes", "lectures", "summarizations", "quiz_solutions", "assignment_solutions"];
+    const folders = [
+      "assignments",
+      "quizzes",
+      "lectures",
+      "summarizations",
+      "quiz_solutions",
+      "assignment_solutions",
+      "quiz_submissions",
+      "quiz_feedback",
+      "quiz_marks",
+      "assignment_submissions",
+      "assignment_marks",
+      "assignment_feedback"
+    ];
+  
     const allFiles: FileItem[] = [];
-
+  
     for (const folder of folders) {
-      const { data, error } = await supabase.storage.from("course-materials").list(`${courseID}/${folder}/`, {
-        limit: 100,
-        offset: 0,
-        sortBy: { column: "name", order: "asc" },
-      });
-
-      if (error) {
-        console.error(`Failed to list files in ${folder}:`, error.message);
-        continue;
-      }
-
-      const fileItems: FileItem[] = await Promise.all(
-        (data || []).map(async (item) => {
-          const filePath = `${courseID}/${folder}/${item.name}`;
-
-          const { data: signedUrlData, error: urlError } = await supabase.storage
+      if (folder === "quiz_submissions" || folder === "quiz_feedback" || folder === "quiz_marks" || folder === "assignment_submissions" || folder === "assignment_feedback" || folder === "assignment_marks") {
+        // ✅ Handle nested user folders inside quiz_submissions
+        const { data: userFolders, error: userFolderError } = await supabase.storage
+          .from("course-materials")
+          .list(`${courseID}/${folder}`, {
+            limit: 100,
+            offset: 0,
+          });
+  
+        if (userFolderError) {
+          console.error(`Failed to list user folders in ${folder}:`, userFolderError.message);
+          continue;
+        }
+  
+        for (const userFolder of userFolders || []) {
+          const userID = userFolder.name;
+          const { data: submissions, error: submissionError } = await supabase.storage
             .from("course-materials")
-            .createSignedUrl(filePath, 60 * 60); // 1-hour expiry
-
-          if (urlError) {
-            console.error(`Failed to create signed URL for ${filePath}:`, urlError.message);
+            .list(`${courseID}/${folder}/${userID}`, {
+              limit: 100,
+              offset: 0,
+            });
+  
+          if (submissionError) {
+            console.error(`Failed to list submissions for ${userID}:`, submissionError.message);
+            continue;
           }
-
-          return {
-            name: `${folder}/${item.name}`, // include folder path
-            url: signedUrlData?.signedUrl ?? "#",
-          };
-        })
-      );
-
-      allFiles.push(...fileItems);
+  
+          const fileItems: FileItem[] = await Promise.all(
+            (submissions || []).map(async (item) => {
+              const filePath = `${courseID}/${folder}/${userID}/${item.name}`;
+  
+              const { data: signedUrlData, error: urlError } = await supabase.storage
+                .from("course-materials")
+                .createSignedUrl(filePath, 60 * 60); // 1-hour expiry
+  
+              if (urlError) {
+                console.error(`Failed to create signed URL for ${filePath}:`, urlError.message);
+              }
+  
+              return {
+                name: `${folder}/${userID}/${item.name}`,
+                url: signedUrlData?.signedUrl ?? "#",
+              };
+            })
+          );
+  
+          allFiles.push(...fileItems);
+        }
+      } else {
+        // ✅ Handle flat folder structures
+        const { data, error } = await supabase.storage.from("course-materials").list(`${courseID}/${folder}/`, {
+          limit: 100,
+          offset: 0,
+          sortBy: { column: "name", order: "asc" },
+        });
+  
+        if (error) {
+          console.error(`Failed to list files in ${folder}:`, error.message);
+          continue;
+        }
+  
+        const fileItems: FileItem[] = await Promise.all(
+          (data || []).map(async (item) => {
+            const filePath = `${courseID}/${folder}/${item.name}`;
+  
+            const { data: signedUrlData, error: urlError } = await supabase.storage
+              .from("course-materials")
+              .createSignedUrl(filePath, 60 * 60); // 1-hour expiry
+  
+            if (urlError) {
+              console.error(`Failed to create signed URL for ${filePath}:`, urlError.message);
+            }
+  
+            return {
+              name: `${folder}/${item.name}`,
+              url: signedUrlData?.signedUrl ?? "#",
+            };
+          })
+        );
+  
+        allFiles.push(...fileItems);
+      }
     }
-
+  
     setFiles(allFiles);
-    // console.log(allFiles)
+    console.log("Fetched files:", allFiles.map(f => f.name));
   };
+  
 
   const handleSummarizeLecture = async () => {
     if (!selectedLecture) {
@@ -385,6 +493,8 @@ export default function CoursePage() {
           <Tab label="Resources" />
           <Tab label="Assignments" />
           <Tab label="AI Tools" />
+          <Tab label="Quiz Grading" />
+          <Tab label="Assignment Grading" />
         </Tabs>
       </Box>
 
@@ -897,6 +1007,369 @@ export default function CoursePage() {
     )}
   </Box>
 )}
+
+{tabIndex === 5 && (
+  <Box>
+    <Typography variant="h6" gutterBottom>Quiz Grading</Typography>
+
+    {/* Quiz Selector */}
+    <FormControl fullWidth sx={{ mb: 3 }}>
+      <InputLabel id="quiz-select-label">Select Quiz</InputLabel>
+      <Select
+        labelId="quiz-select-label"
+        value={selectedLecture}
+        label="Select Quiz"
+        onChange={(e) => setSelectedLecture(e.target.value)}
+      >
+        
+        {files
+          .filter((file) => file.name.startsWith("quizzes/"))
+          .map((file) => (
+            <MenuItem
+              key={file.name}
+              value={file.name.replace("quizzes/", "")}
+            >
+              {file.name.replace("quizzes/", "")}
+            </MenuItem>
+          ))}
+      </Select>
+    </FormControl>
+
+    {/* Student Submissions */}
+    {selectedLecture && (
+      <Box>
+        {files
+          .filter(
+            (file) =>
+              file.name.startsWith("quiz_submissions/") &&
+              file.name.endsWith(`/${selectedLecture}`)
+          )
+          .map((submission) => {
+            const parts = submission.name.split("/");
+            console.log("hellooooooooooooooooooooooooooooooooo")
+            console.log("all the files are: ", files)
+            const userId = parts[1];
+            const marks = files.find((f) =>
+              f.name === `quiz_marks/${userId}/${selectedLecture.replace(".pdf", "_marks.txt")}`
+            );
+            const feedback = files.find((f) =>
+              f.name === `quiz_feedback/${userId}/${selectedLecture.replace(".pdf", "_feedback.pdf")}`
+            );
+
+            return (
+              <Paper key={submission.name} elevation={2} sx={{ p: 2, mb: 2 }}>
+                <Typography><b>Student ID:</b> {userId}</Typography>
+                <Typography>
+                  <b>Submission:</b>{" "}
+                  <Link href={submission.url} target="_blank" underline="hover">
+                    View PDF
+                  </Link>
+                </Typography>
+                <Typography>
+                  <b>Marks:</b>{" "}
+                  {marks ? (
+                    <Link href={marks.url} target="_blank" underline="hover">
+                      View Marks
+                    </Link>
+                  ) : (
+                    "Not Graded"
+                  )}
+                </Typography>
+                <Typography>
+                  <b>Feedback Report:</b>{" "}
+                  {feedback ? (
+                    <Link href={feedback.url} target="_blank" underline="hover">
+                      Download Feedback
+                    </Link>
+                  ) : (
+                    "Not Available"
+                  )}
+                </Typography>
+                <Button
+                  variant="contained"
+                  sx={{ mt: 2 }}
+                  disabled={!!marks}
+                  onClick={async () => {
+                    const quizFile = files.find((f) => f.name === `quizzes/${selectedLecture}`);
+                    if (!quizFile) return alert("Quiz file not found.");
+
+                    
+                    const formData = new FormData();
+                    const solutionFile = files.find(
+                      (f) => f.name === `quiz_solutions/${selectedLecture.replace(".pdf", "_solution.pdf")}`
+                    );
+                    
+                    if (!solutionFile) {
+                      alert("Quiz solution (markscheme) not found.");
+                      return;
+                    }
+                    
+                    const solutionBlob = await fetch(solutionFile.url).then((res) => res.blob());
+                    formData.append("quiz", new File([solutionBlob], solutionFile.name));
+                    // formData.append("quiz", new File([await (await fetch(quizFile.url)).blob()], quizFile.name));
+                    formData.append("quiz_solution", new File([await (await fetch(submission.url)).blob()], submission.name));
+                    formData.append("student_id", userId);
+
+                    const res = await fetch("http://localhost:8000/api/grading/grade-quiz", {
+                      method: "POST",
+                      body: formData,
+                    });
+
+                    console.log("req has been sent")
+
+                    // const data = await res.json();
+                    const data = await res.json();
+                    if (data.status === "success") {
+                      const { marks, feedback_pdf_base64 } = data;
+
+                      // Prepare files
+                      const feedbackBlob = new Blob([Uint8Array.from(atob(feedback_pdf_base64), c => c.charCodeAt(0))], { type: "application/pdf" });
+                      const marksBlob = new Blob([marks.toString()], { type: "text/plain" });
+
+                      const feedbackFilePath = `${courseID}/quiz_feedback/${userId}/${selectedLecture.replace(".pdf", "_feedback.pdf")}`;
+                      const marksFilePath = `${courseID}/quiz_marks/${userId}/${selectedLecture.replace(".pdf", "_marks.txt")}`;
+
+                      await supabase.storage.from("course-materials").upload(feedbackFilePath, feedbackBlob, { upsert: true });
+                      await supabase.storage.from("course-materials").upload(marksFilePath, marksBlob, { upsert: true });
+
+                      alert("Grading successful and uploaded!");
+                      fetchFiles();
+                    } else {
+                      alert("Grading failed.");
+                    }
+                    // if (data.status === "success") {
+                    //   alert("Grading successful!");
+                    //   fetchFiles();
+                    // } else {
+                    //   alert("Grading failed.");
+                    // }
+                  }}
+                >
+                  Grade
+                </Button>
+              </Paper>
+            );
+          })}
+
+        {/* <Button
+          variant="outlined"
+          sx={{ mt: 3 }}
+          onClick={async () => {
+            const quizFile = files.find((f) => f.name === `quizzes/${selectedLecture}`);
+            if (!quizFile) return alert("Quiz file not found.");
+
+            const submissions = files.filter(
+              (file) =>
+                file.name.startsWith("quiz_submissions/") &&
+                file.name.endsWith(`/${selectedLecture}`)
+            );
+
+            for (const submission of submissions) {
+              const userId = submission.name.split("/")[1];
+              const marksExist = files.find((f) =>
+                f.name === `quiz_marks/${userId}/${selectedLecture.replace(".pdf", "_marks.txt")}`
+              );
+              if (marksExist) continue;
+
+              
+              const formData = new FormData();
+              formData.append("quiz", new File([await (await fetch(quizFile.url)).blob()], quizFile.name));
+              formData.append("quiz_solution", new File([await (await fetch(submission.url)).blob()], submission.name));
+              formData.append("student_id", userId);
+
+              await fetch("http://localhost:8000/api/grading/grade-quiz", {
+                method: "POST",
+                body: formData,
+              });
+            }
+
+            alert("All ungraded submissions graded successfully!");
+            fetchFiles();
+          }}
+        >
+          Grade All
+        </Button> */}
+      </Box>
+    )}
+  </Box>
+)}
+
+{tabIndex === 6 && (
+  <Box>
+    <Typography variant="h6" gutterBottom>Assignment Grading</Typography>
+
+    {/* Assignment Selector */}
+    <FormControl fullWidth sx={{ mb: 3 }}>
+      <InputLabel id="assignment-select-label">Select Assignment</InputLabel>
+      <Select
+        labelId="assignment-select-label"
+        value={selectedLecture}
+        label="Select Assignment"
+        onChange={(e) => setSelectedLecture(e.target.value)}
+      >
+        {files
+          .filter((file) => file.name.startsWith("assignments/"))
+          .map((file) => (
+            <MenuItem
+              key={file.name}
+              value={file.name.replace("assignments/", "")}
+            >
+              {file.name.replace("assignments/", "")}
+            </MenuItem>
+          ))}
+      </Select>
+    </FormControl>
+
+    {/* Student Submissions */}
+    {selectedLecture && (
+      <Box>
+        {files
+          .filter(
+            (file) =>
+              file.name.startsWith("assignment_submissions/") &&
+              file.name.endsWith(`/${selectedLecture.replace(".ipynb", "_Sol.ipynb")}`)
+          )
+          .map((submission) => {
+            const parts = submission.name.split("/");
+            const userId = parts[1];
+
+            const marks = files.find((f) =>
+              f.name === `assignment_marks/${userId}/${selectedLecture.replace(".ipynb", "_marks.txt")}`
+            );
+
+            const feedback = files.find((f) =>
+              f.name === `assignment_feedback/${userId}/${selectedLecture.replace(".ipynb", "_feedback.pdf")}`
+            );
+
+            return (
+              <Paper key={submission.name} elevation={2} sx={{ p: 2, mb: 2 }}>
+                <Typography><b>Student ID:</b> {userId}</Typography>
+                <Typography>
+                  <b>Submission:</b>{" "}
+                  <Link href={submission.url} target="_blank" underline="hover">
+                    View Notebook
+                  </Link>
+                </Typography>
+                <Typography>
+                  <b>Marks:</b>{" "}
+                  {marks ? (
+                    <Link href={marks.url} target="_blank" underline="hover">
+                      View Marks
+                    </Link>
+                  ) : (
+                    "Not Graded"
+                  )}
+                </Typography>
+                <Typography>
+                  <b>Feedback Report:</b>{" "}
+                  {feedback ? (
+                    <Link href={feedback.url} target="_blank" underline="hover">
+                      Download Feedback
+                    </Link>
+                  ) : (
+                    "Not Available"
+                  )}
+                </Typography>
+                <Button
+                  variant="contained"
+                  sx={{ mt: 2 }}
+                  disabled={!!marks}
+                  onClick={async () => {
+                    const assignmentFile = files.find(f => f.name === `assignments/${selectedLecture}`);
+                    const solutionFile = files.find(f =>
+                      f.name === `assignment_solutions/${selectedLecture.replace(".ipynb", "_markscheme.pdf")}`
+                    );
+
+                    if (!assignmentFile || !solutionFile) {
+                      alert("Assignment or its solution markscheme is missing.");
+                      return;
+                    }
+
+                    const submissionBlob = await fetch(submission.url).then(res => res.blob());
+
+                    const formData = new FormData();
+                    formData.append("assignment", new File([submissionBlob], submission.name));
+                    formData.append("assignment_solution", new File([await (await fetch(solutionFile.url)).blob()], solutionFile.name));
+                    formData.append("student_id", userId);
+
+                    const res = await fetch("http://localhost:8000/api/grading/grade-assignment", {
+                      method: "POST",
+                      body: formData,
+                    });
+
+                    const data = await res.json();
+                    if (data.status === "success") {
+                      const { marks, feedback_pdf_base64 } = data;
+
+                      const feedbackBlob = new Blob(
+                        [Uint8Array.from(atob(feedback_pdf_base64), c => c.charCodeAt(0))],
+                        { type: "application/pdf" }
+                      );
+                      const marksBlob = new Blob([marks.toString()], { type: "text/plain" });
+
+                      const feedbackPath = `${courseID}/assignment_feedback/${userId}/${selectedLecture.replace(".ipynb", "_feedback.pdf")}`;
+                      const marksPath = `${courseID}/assignment_marks/${userId}/${selectedLecture.replace(".ipynb", "_marks.txt")}`;
+
+                      await supabase.storage.from("course-materials").upload(feedbackPath, feedbackBlob, { upsert: true });
+                      await supabase.storage.from("course-materials").upload(marksPath, marksBlob, { upsert: true });
+
+                      alert("✅ Grading successful and uploaded!");
+                      fetchFiles();
+                    } else {
+                      alert("Grading failed.");
+                    }
+                  }}
+                >
+                  Grade
+                </Button>
+              </Paper>
+            );
+          })}
+
+        {/* Grade All */}
+        {/* <Button
+          variant="outlined"
+          sx={{ mt: 3 }}
+          onClick={async () => {
+            const assignmentFile = files.find((f) => f.name === `assignments/${selectedLecture}`);
+            if (!assignmentFile) return alert("Assignment file not found.");
+
+            const submissions = files.filter(
+              (file) =>
+                file.name.startsWith("assignment_submissions/") &&
+                file.name.endsWith(`/${selectedLecture.replace(".ipynb", "_Sol.ipynb")}`)
+            );
+
+            for (const submission of submissions) {
+              const userId = submission.name.split("/")[1];
+              const marksExist = files.find((f) =>
+                f.name === `assignment_marks/${userId}/${selectedLecture.replace(".ipynb", "_marks.txt")}`
+              );
+              if (marksExist) continue;
+
+              const formData = new FormData();
+              formData.append("assignment", new File([await (await fetch(submission.url)).blob()], submission.name));
+              formData.append("assignment_solution", new File([await (await fetch(solutionFile.url)).blob()], solutionFile.name));
+              formData.append("student_id", userId);
+
+              await fetch("http://localhost:8000/api/grading/grade-assignment", {
+                method: "POST",
+                body: formData,
+              });
+            }
+
+            alert("All ungraded submissions graded!");
+            fetchFiles();
+          }}
+        >
+          Grade All
+        </Button> */}
+      </Box>
+    )}
+  </Box>
+)}
+
+
 
     </Box>
   </Box>

@@ -161,14 +161,14 @@ export default function CoursePage() {
         const fetchFiles = async () => {
           if (!userAuth?.id) return;
 
-          const folders = ["assignments", "quizzes", "lectures", "summarizations"];
+          const folders = ["assignments", "quizzes", "lectures", "summarizations", "quiz_submissions", "quiz_feedback", "quiz_marks", "assignment_submissions", "assignment_feedback", "assignment_marks"];
           const allFiles: FileItem[] = [];
     
           for (const folder of folders) {
             let path = `${courseID}/${folder}`;
             
             // For summarizations, we need to look in the user's specific directory
-            if (folder === "summarizations") {
+            if (folder === "summarizations" || folder === "quiz_submissions" || folder === "quiz_feedback" || folder === "quiz_marks" || folder === "assignment_submissions" || folder === "assignment_feedback" || folder === "assignment_marks") {
               path = `${path}/${userAuth.id}`;
             }
 
@@ -257,14 +257,14 @@ export default function CoursePage() {
         const fetchFiles = async () => {
           if (!userAuth?.id) return;
 
-          const folders = ["assignments", "quizzes", "lectures", "summarizations", "flashcards"];
+          const folders = ["assignments", "quizzes", "lectures", "summarizations", "flashcards", "quiz_submissions", "quiz_feedback", "quiz_marks", "assignment_submissions", "assignment_feedback", "assignment_marks"];
           const allFiles: FileItem[] = [];
     
           for (const folder of folders) {
             let path = `${courseID}/${folder}`;
             
             // For user-specific content, we need to look in the user's specific directory
-            if (folder === "summarizations" || folder === "flashcards") {
+            if (folder === "summarizations" || folder === "flashcards" || folder === "quiz_submissions" || folder === "quiz_feedback" || folder === "quiz_marks" || folder === "assignment_submissions" || folder === "assignment_feedback" || folder === "assignment_marks") {
               path = `${path}/${userAuth.id}`;
             }
 
@@ -318,14 +318,14 @@ export default function CoursePage() {
       const fetchFiles = async () => {
         if (!userAuth?.id) return;
 
-        const folders = ["assignments", "quizzes", "lectures", "summarizations", "flashcards"];
+        const folders = ["assignments", "quizzes", "lectures", "summarizations", "flashcards", "quiz_submissions", "quiz_feedback", "quiz_marks", "assignment_submissions", "assignment_feedback", "assignment_marks"];
         const allFiles: FileItem[] = [];
   
         for (const folder of folders) {
           let path = `${courseID}/${folder}`;
           
           // For user-specific content, we need to look in the user's specific directory
-          if (folder === "summarizations" || folder === "flashcards") {
+          if (folder === "summarizations" || folder === "flashcards" || folder === "quiz_submissions" || folder === "quiz_feedback" || folder === "quiz_marks" || folder === "assignment_submissions" || folder === "assignment_feedback" || folder === "assignment_marks") {
             path = `${path}/${userAuth.id}`;
           }
 
@@ -391,9 +391,12 @@ export default function CoursePage() {
           <Tab label="Overview" />
           <Tab label="Announcements" />
           <Tab label="Resources" />
-          <Tab label="Assignments" />
+          {/* <Tab label="Assignments" /> */}
           <Tab label="AI Tools" />
-          <Tab label="Submissions" />
+          {/* <Tab label="Submissions" /> */}
+          <Tab label="Quiz Submissions" />
+          <Tab label="Assignment Submissions" />
+
         </Tabs>
       </Box>
 
@@ -457,7 +460,7 @@ export default function CoursePage() {
           </Box>
         )}
 
-
+{/* 
         {tabIndex === 3 && (
           <Box>
             <Typography variant="h6" gutterBottom>Assignments</Typography>
@@ -471,9 +474,9 @@ export default function CoursePage() {
               </Grid2>
             </Grid2>
           </Box>
-        )}
+        )} */}
 
-        {tabIndex === 4 && (
+        {tabIndex === 3 && (
           <Box>
             <Typography variant="h6" gutterBottom>AI Tools</Typography>
             <Grid2 container spacing={2}>
@@ -677,18 +680,17 @@ export default function CoursePage() {
         )}
          <Box p={4}>
         {/* Submissions Tab */}
-        {tabIndex === 5 && (
+        {/* {tabIndex === 5 && (
           <Box>
             <Typography variant="h6" gutterBottom>Submissions</Typography>
 
-            {/* Filter files for assignments and quizzes */}
             {["assignments", "quizzes"].map((folder) => (
               <Box key={folder} mb={4}>
                 <Typography variant="subtitle1" gutterBottom sx={{ textTransform: "capitalize" }}>
                   {folder}
                 </Typography>
 
-                {/* File List */}
+              
                 <List>
                   {files.filter((f) => f.name.startsWith(`${folder}/`)).map((file, index, arr) => {
                     const fileName = file.name.replace(`${folder}/`, "");
@@ -703,7 +705,7 @@ export default function CoursePage() {
                             }
                             secondary={`Uploaded to ${folder}`}
                           />
-                          {/* Upload Button */}
+                        
                           <Button
                             variant="contained"
                             component="label"
@@ -731,7 +733,7 @@ export default function CoursePage() {
                                   alert("Failed to upload file. Please try again.");
                                 } else {
                                   alert("File uploaded successfully!");
-                                  // Optionally, refetch files to update the list
+                             
                                   const fetchFiles = async () => {
                                     if (!userAuth?.id) return;
 
@@ -795,7 +797,234 @@ export default function CoursePage() {
               </Box>
             ))}
           </Box>
-        )}
+        )} */}
+
+{tabIndex === 4 && (
+  <Box>
+    <Typography variant="h6" gutterBottom>Quiz Submissions</Typography>
+
+    {files.filter(f => f.name.startsWith("quizzes/")).map((file, idx, arr) => {
+      const fileName = file.name.replace("quizzes/", "");
+      console.log("file name is: ", fileName)
+      const quizBaseName = fileName.replace(".pdf", "");
+      console.log("quiz base  name is: ", quizBaseName)
+      console.log("all the files are: ", files)
+
+      // Look for any submission file uploaded by student for this quiz
+      // const submission = files.find(f =>
+      //   f.name.startsWith(`${courseID}/quiz_submissions/${userAuth?.id}/`) &&
+      //   f.name.includes(fileName)
+      // );
+      const submission = files.find(f =>
+        f.name.startsWith(`quiz_submissions/`) &&
+        f.name.endsWith(fileName)
+      );
+      
+      console.log("submission is: ", submission)
+
+      // Look for corresponding feedback and marks
+      // const feedback = files.find(f =>
+      //   f.name === `quiz_feedback/${userAuth?.id}/${quizBaseName}_feedback.pdf`
+      // );
+     
+      // const marks = files.find(f =>
+      //   f.name === `quiz_marks/${userAuth?.id}/${quizBaseName}_marks.txt`
+      // );
+      
+      const feedback = files.find(f =>
+        f.name === `quiz_feedback/${quizBaseName}_feedback.pdf`
+      );
+      console.log("feedback is: ", feedback)
+      const marks = files.find(f =>
+        f.name === `quiz_marks/${quizBaseName}_marks.txt`
+      );
+      console.log("marks is: ", marks)
+      return (
+        <Box key={file.name} mb={3}>
+          <Typography variant="subtitle1">{fileName}</Typography>
+          <Typography variant="body2">Due: TBD</Typography>
+
+          {/* Upload submission */}
+          {!submission ? (
+            <Button
+              sx={{ mt: 1 }}
+              variant="contained"
+              component="label"
+            >
+              Submit Quiz
+              <input
+                type="file"
+                hidden
+                accept="application/pdf"
+                onChange={async (e) => {
+                  if (!e.target.files || !e.target.files[0]) return;
+                  const selectedFile = e.target.files[0];
+                  const filePath = `${courseID}/quiz_submissions/${userAuth?.id}/${selectedFile.name}`;
+
+                  const { error } = await supabase.storage
+                    .from("course-materials")
+                    .upload(filePath, selectedFile, {
+                      upsert: true,
+                      contentType: "application/pdf",
+                    });
+
+                  if (error) {
+                    handleClick("Quiz submission failed.", "error");
+                  } else {
+                    handleClick("Quiz submitted successfully!", "success");
+                    window.location.reload();
+                  }
+                }}
+              />
+            </Button>
+          ) : (
+            <>
+              <Typography sx={{ mt: 1 }} color="success.main">
+                ✅ Submitted
+              </Typography>
+              <Link
+                href={submission.url}
+                target="_blank"
+                underline="hover"
+              >
+                View Submission
+              </Link>
+            </>
+          )}
+
+          {/* Marks Display */}
+          <Box mt={2}>
+            <Typography variant="subtitle2">Marks Obtained:</Typography>
+            {marks ? (
+              <Link href={marks.url} target="_blank" underline="hover">View Marks</Link>
+            ) : (
+              <Typography color="text.secondary">Pending Evaluation</Typography>
+            )}
+          </Box>
+
+          {/* Feedback Report */}
+          <Box mt={1}>
+            <Typography variant="subtitle2">Feedback Report:</Typography>
+            {feedback ? (
+              <Link href={feedback.url} target="_blank" underline="hover">Download Feedback</Link>
+            ) : (
+              <Typography color="text.secondary">Feedback not available yet</Typography>
+            )}
+          </Box>
+
+          {idx < arr.length - 1 && <Divider sx={{ my: 3 }} />}
+        </Box>
+      );
+    })}
+  </Box>
+)}
+
+{tabIndex === 5 && (
+  <Box>
+    <Typography variant="h6" gutterBottom>Assignment Submissions</Typography>
+
+    {files.filter(f => f.name.startsWith("assignments/")).map((assignmentFile, idx, arr) => {
+      const assignmentName = assignmentFile.name.replace("assignments/", "");
+      const baseName = assignmentName.replace(".ipynb", "");
+      console.log("all the assns names are: ", assignmentName)
+      console.log("all the files are: ", files)
+      const submission = files.find(f =>
+        f.name.startsWith(`assignment_submissions/`) &&
+        f.name.endsWith(`${baseName}_Sol.ipynb`)
+      );
+
+      const feedback = files.find(f =>
+        f.name === `assignment_feedback/${baseName}_feedback.pdf`
+      );
+
+      const marks = files.find(f =>
+        f.name === `assignment_marks/${baseName}_marks.txt`
+      );
+
+      return (
+        <Box key={assignmentFile.name} mb={3}>
+          <Typography variant="subtitle1">{assignmentName}</Typography>
+          <Typography variant="body2">Due: TBD</Typography>
+
+          {/* Upload submission */}
+          {!submission ? (
+            <Button sx={{ mt: 1 }} variant="contained" component="label">
+              Submit Assignment
+              <input
+                type="file"
+                hidden
+                accept=".ipynb,application/json"
+                onChange={async (e) => {
+                  if (!e.target.files || !e.target.files[0]) return;
+                  const selectedFile = e.target.files[0];
+                  const filePath = `${courseID}/assignment_submissions/${userAuth?.id}/${selectedFile.name}`;
+
+                  const { error } = await supabase.storage
+                    .from("course-materials")
+                    .upload(filePath, selectedFile, {
+                      upsert: true,
+                      contentType: "application/json",
+                    });
+
+                  if (error) {
+                    handleClick("Assignment submission failed.", "error");
+                  } else {
+                    handleClick("Assignment submitted successfully!", "success");
+                    window.location.reload();
+                  }
+                }}
+              />
+            </Button>
+          ) : (
+            <>
+              <Typography sx={{ mt: 1 }} color="success.main">
+                ✅ Submitted
+              </Typography>
+              <Link
+                href={submission.url}
+                target="_blank"
+                underline="hover"
+              >
+                View Submission
+              </Link>
+            </>
+          )}
+
+          {/* Marks Display */}
+          <Box mt={2}>
+            <Typography variant="subtitle2">Marks Obtained:</Typography>
+            {marks ? (
+              <Link href={marks.url} target="_blank" underline="hover">
+                View Marks
+              </Link>
+            ) : (
+              <Typography color="text.secondary">Pending Evaluation</Typography>
+            )}
+          </Box>
+
+          {/* Feedback Report */}
+          <Box mt={1}>
+            <Typography variant="subtitle2">Feedback Report:</Typography>
+            {feedback ? (
+              <Link href={feedback.url} target="_blank" underline="hover">
+                Download Feedback
+              </Link>
+            ) : (
+              <Typography color="text.secondary">Feedback not available yet</Typography>
+            )}
+          </Box>
+
+          {idx < arr.length - 1 && <Divider sx={{ my: 3 }} />}
+        </Box>
+      );
+    })}
+  </Box>
+)}
+
+
+
+
+
       </Box>
     </Box>
         <Snackbar

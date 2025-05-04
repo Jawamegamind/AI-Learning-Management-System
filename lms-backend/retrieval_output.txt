@@ -877,3 +877,108 @@ o Annotation and verification are harder than automation .
 o Creativity and attention to detail are critical in dataset design.
 o Overcoming challenges inspires innovative solutions in data synthesis and evaluation.
 --- End Retrieval ---
+--- New Retrieval ---
+Optimized Query: make a quiz focused on the keyterms in the lecture such as Lora, MOE etc.
+Context:
+Additional Reading Materials 
+• ZeRO Optimizer
+• ZeRO-2 & DeepSpeed
+• ZeRO 3
+• Flash Attention
+• Flash Attention 2
+• Knowledge Distillation
+Agenda
+• Why Efficiency Matter? 
+• Training Efficiency?
+• PEFT
+• MoE 
+• ZeroOptimization
+• Flash Attention
+• Inferance Efficiency
+• Quanitzation 
+• Knowledge Distillation
+• Lab Introduction
+Agenda
+• Why Efficiency Matter? 
+• Training Efficiency?
+• PEFT
+• MoE 
+• ZeroOptimization
+• Flash Attention
+• Inferance Efficiency
+• Quanitzation 
+• Knowledge Distillation
+• Lab Introduction
+Agenda
+• Why Efficiency Matter? 
+• Training Efficiency?
+• PEFT
+• MoE 
+• ZeroOptimization
+• Flash Attention
+• Inferance Efficiency
+• Quanitzation 
+• Knowledge Distillation
+• Lab Introduction
+Lecture 6: Efficiency in LLMs
+Syed Babar Ali School of  Science and Engineering LUMS
+Spring 2025
+Problem Solving – Artificial Intelligence – Uncertainty
+AI-602: Large Language Models 
+Systems
+Agenda
+• Why Efficiency Matters?  
+• Training Efficiency
+• PEFT  
+• MoE   
+• ZeroOptimization
+• Flash Attention
+• Inference Efficiency
+• Quanitzation   
+• Knowledge Distillation
+• Lab Introduction
+Agenda
+• Why Efficiency Matter? 
+• Training Efficiency?
+• PEFT
+• MoE 
+• ZeroOptimization
+• Flash Attention
+• Inference Efficiency
+• Quanitzation 
+• Knowledge Distillation
+• Lab Introduction
+Agenda
+• Why Efficiency Matter? 
+• Training Efficiency?
+• PEFT
+• MoE 
+• ZeroOptimization
+• Flash Attention
+• Inference Efficiency
+• Quanitzation 
+• Knowledge Distillation
+• Lab Introduction
+Agenda
+• Why Efficiency Matter? 
+• Training Efficiency?
+• PEFT
+• MoE 
+• ZeroOptimization
+• Flash Attention
+• Inference Efficiency
+• Quanitzation 
+• Knowledge Distillation
+• Lab Introduction
+Agenda
+• Why Efficiency Matter? 
+• Training Efficiency?
+• PEFT
+• MoE 
+• ZeroOptimization
+• Flash Attention
+• Inference Efficiency
+• Quanitzation 
+• Knowledge Distillation
+• Lab Introduction
+--- End Retrieval ---
