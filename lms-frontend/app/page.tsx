@@ -12,12 +12,14 @@ import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
 import { Alert } from '@mui/material';
 import Snackbar, {SnackbarCloseReason} from '@mui/material/Snackbar';
+import LoadingModal from '../app/_components/LoadingModal';
 // import { useRouter } from 'next/navigation';
 import {login} from '@/app/(authentication)/login/actions';
 
 
 export default function SignIn() {
     const [open, setOpen] = React.useState(false);
+    const [loading, setLoading] = React.useState(false);
     const [snackbarMessage, setSnackbarMessage] = React.useState('');
     const [snackbarSeverity, setSnackbarSeverity] = React.useState<'success' | 'error' | 'info' | 'warning'>('info');
     
@@ -53,10 +55,12 @@ export default function SignIn() {
 
         // Using the login action
         try {
+            setLoading(true);
             await login(formData);
+            setLoading(false);
         } catch (error) {
             console.error('Error:', error);
-            handleClick("Login failed", "error");
+            // handleClick("Login failed", "error");
         }
 
         // const email = data.get('email') as string;
@@ -133,6 +137,7 @@ export default function SignIn() {
                     >
                         Sign In
                     </Button>
+                    <LoadingModal open={loading} title="Logging in"/>
                     <Box display="flex" justifyContent="center">
                         <Link href="/forgot-password" variant="body2">
                             Forgot password?
