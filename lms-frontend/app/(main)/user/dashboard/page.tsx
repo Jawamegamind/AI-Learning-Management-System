@@ -2,6 +2,8 @@
 
 import * as React from 'react';
 import Navbar from '../../../_components/navbar';
+// import Navbar from '../../../_components/navbarStudent';
+// import Sidebar from '../../../_components/sidebar';
 import { createClient } from '@/utils/supabase/client';
 import {useState, useLayoutEffect} from 'react';
 import { Typography } from '@mui/material';
@@ -84,29 +86,32 @@ export default function Dashboard() {
                             </Box>
                         ) : (
                             <>
-                                {/* Instructor Courses */}
-                                <Typography variant="h6" mt={4}>Courses You Teach</Typography>
-                                {instructorCourses && instructorCourses.length > 0 ? (
-                                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
-                                        {instructorCourses.map((course, idx) => (
-                                            <CourseCardInstructor key={idx} course={course} />
-                                        ))}
-                                    </Box>
-                                ) : (
-                                    <Typography color="text.secondary">You’re not teaching any courses yet.</Typography>
-                                )}
+                                <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                    <Typography variant="h6" gutterBottom>Courses You Teach</Typography>
+                                    {instructorCourses && instructorCourses.length > 0 ? (
+                                        <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 2 }}>
+                                            {instructorCourses.map((course, idx) => (
+                                                <CourseCardInstructor key={idx} course={course} />
+                                            ))}
+                                        </Box>
+                                    ) : (
+                                        <Typography color="text.secondary">You’re not teaching any courses yet.</Typography>
+                                    )}
+                                </Box>
 
-                                {/* Student Courses */}
-                                <Typography variant="h6" mt={4}>Courses You&apos;re Enrolled In</Typography>
-                                {studentCourses && studentCourses.length > 0 ? (
-                                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
-                                        {studentCourses.map((course, idx) => (
-                                            <CourseCardUser key={idx} course={course} />
-                                        ))}
-                                    </Box>
-                                ) : (
-                                    <Typography color="text.secondary">You&apos;re not enrolled in any courses yet.</Typography>
-                                )}
+                                <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                    <Typography variant="h6" gutterBottom>Courses You're Enrolled In</Typography>
+                                    {studentCourses && studentCourses.length > 0 ? (
+                                        <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 2 }}>
+                                            {studentCourses.map((course, idx) => (
+                                                <CourseCardUser key={idx} course={course} />
+                                            ))}
+                                        </Box>
+                                    ) : (
+                                        <Typography color="text.secondary">You're not enrolled in any courses yet.</Typography>
+                                    )}
+                                </Box>
+
                             </>
                         )}
                     </div>

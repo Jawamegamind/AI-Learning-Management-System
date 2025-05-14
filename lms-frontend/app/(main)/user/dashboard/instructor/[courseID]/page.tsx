@@ -2,7 +2,8 @@
 
 import {useState, useLayoutEffect} from "react";
 import { useParams } from "next/navigation";
-import { Box, Typography, Tabs, Tab, Grid2, Paper, List, ListItem, ListItemText, Divider, Button, Link, IconButton, FormGroup, FormControlLabel, Checkbox, TextField, InputLabel, Select, MenuItem, FormControl, LinearProgress, CircularProgress } from "@mui/material";
+import { Box, Typography, Tabs, Tab, Grid2, Paper, List, ListItem, ListItemText, Divider, Button, Link, IconButton, FormGroup, FormControlLabel, Checkbox, TextField, InputLabel, Select, MenuItem, FormControl, LinearProgress, CircularProgress, FormLabel } from "@mui/material";
+import { Modal, Sheet, Textarea } from '@mui/joy';
 import { Delete, Download } from "@mui/icons-material";
 import { createClient } from "@/utils/supabase/client";
 import ResponsiveAppBar from "@/app/_components/navbar";
@@ -45,6 +46,12 @@ export default function CoursePage() {
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generationStatus, setGenerationStatus] = useState<string>('');
   const [loading, setLoading] = useState(false)
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [userFeedback, setUserFeedback] = useState('');
+  const [currAssignmentUrl, setcurrAssignmentUrl] = useState('')
+  const [assignmentName, setAssignmentname] = useState('')
+  const [ prevAssignmentVersion , setprevAssignmentVersion] = useState('')
+
   const supabase = createClient();
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -71,11 +78,100 @@ export default function CoursePage() {
     });
   };
 
+  const handleGeneratewithFeedback = async () => {
+    console.log("handling gen w feedback")
+    setIsGenerating(true);
+    setGenerationProgress(0);
+    setGenerationStatus('Starting generation...');
+    try {
+      // Simulate progress updates
+      const progressInterval = setInterval(() => {
+        setGenerationProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 1000);
+
+      setLoading(true)
+      const score_and_assignment = await generateAssignmentOrQuiz(
+        userprompt,
+        selectedFilePaths as string[],
+        'assignment',
+        userFeedback,
+        JSON.stringify(prevAssignmentVersion)
+      );
+      console.log(score_and_assignment)
+      setLoading(false)
+      const result = score_and_assignment.assignment
+
+      clearInterval(progressInterval);
+      setGenerationProgress(100);
+      setGenerationStatus('Generation complete! Saving file...');
+
+      const folderType = 'assignments';
+      if (result !== undefined) {
+
+          let filename = assignmentName
+          console.log(`${'assignment'.charAt(0).toUpperCase() + 'assignment'.slice(1)}: saving to ${folderType}`, result);
+          const path = `${courseID}/${folderType}/${assignmentName}.ipynb`;
+
+          const { data, error } = await supabase.storage
+            .from('course-materials')
+            .upload(path, JSON.stringify(result), {
+              contentType: 'application/json',
+              upsert: true, // Overwrites if the file already exists
+            });
+
+          if (error) {
+            console.error('Upload failed:', error.message);
+            throw new Error(`Upload failed: ${error.message}`);
+          }
+          const { data: signedUrlData, error: urlError } = await supabase.storage
+          .from('course-materials')
+          .createSignedUrl(data.path, 60 * 60); // URL valid for 1 hour
+
+          if (urlError) {
+            console.error('Error creating signed URL:', urlError);
+          } else {
+            console.log('Signed File URL:', signedUrlData.signedUrl);
+            setcurrAssignmentUrl(signedUrlData.signedUrl)
+          }
+
+      }
+      // TODO: Display the result in a modal or new section
+      setIsGenerating(false);
+      setGenerationProgress(0);
+      setGenerationStatus('');
+      if (score_and_assignment.status === 'awaiting_feedback') {
+        setShowFeedbackModal(true);
+      } else {
+        setShowFileSelector(false);
+        setActiveTool(null);
+        setSelectedFiles([]);
+        setSelectedFilePaths([]);
+        setPrompt('');
+      }
+    } catch (error) {
+      console.error(`assignment generation error:`, error);
+      alert(`Failed to generate assignment`);
+      setLoading(false);
+      setIsGenerating(false);
+      setGenerationProgress(0);
+      setGenerationStatus('');
+    }
+
+  }
+
   const handleGenerateContent = async (option: 'quiz' | 'assignment') => {
     // if (selectedFiles.length === 0) {
     //   alert('Please select at least one file');
     //   return;
     // }
+    // setShowFeedbackModal(true);
+    // return;
 
     if (!userprompt.trim()) {
       alert('Please enter a prompt');
@@ -102,11 +198,14 @@ export default function CoursePage() {
       const score_and_assignment = await generateAssignmentOrQuiz(
         userprompt,
         selectedFilePaths as string[],
-        option
+        option,
+        '',
+        ''
       );
+      console.log(score_and_assignment)
       setLoading(false)
-      if (option === 'assignment') {
-        alert(`The score evaluated for the assignment by the LLM was ${score_and_assignment.score}`)
+      if (option === 'quiz') {
+        alert(`The score evaluated for the quiz by the LLM was ${score_and_assignment.score}`)
       }
       const result = score_and_assignment.assignment
 
@@ -116,13 +215,19 @@ export default function CoursePage() {
 
       const folderType = option === 'quiz' ? 'quizzes' : 'assignments';
       if (result !== undefined) {
-          let filename: string | null = "";
-          while (!filename || filename.trim() === "") {
-            filename = prompt(`The ${option} has been generated successfully. Enter a filename:`);
-            if (filename === null) {
-              alert("Filename is required!");
+        let filename: string | null = "";
+        if(assignmentName === ''){
+            while (!filename || filename.trim() === "") {
+              filename = prompt(`The ${option} has been generated successfully. Enter a filename:`);
+              if (filename === null) {
+                alert("Filename is required!");
+              }
             }
+            setAssignmentname(filename)
+          } else {
+            filename = assignmentName
           }
+
           console.log(`${option.charAt(0).toUpperCase() + option.slice(1)}: saving to ${folderType}`, result);
           if (option === 'quiz'){
             const path = `${courseID}/${folderType}/${filename}.pdf`;
@@ -143,7 +248,15 @@ export default function CoursePage() {
             }
 
           } else {  //'assignment'
-            const path = `${courseID}/${folderType}/${filename}.ipynb`;
+            setprevAssignmentVersion(result)
+            let path
+            console.log(assignmentName)
+            if(assignmentName === ''){
+              path = `${courseID}/${folderType}/${filename}.ipynb`;
+            } else {
+              path = `${courseID}/${folderType}/${assignmentName}.ipynb`;
+            }
+            console.log(path)
 
             const { data, error } = await supabase.storage
               .from('course-materials')
@@ -156,17 +269,32 @@ export default function CoursePage() {
               console.error('Upload failed:', error.message);
               throw new Error(`Upload failed: ${error.message}`);
             }
+            const { data: signedUrlData, error: urlError } = await supabase.storage
+            .from('course-materials')
+            .createSignedUrl(data.path, 60 * 60); // URL valid for 1 hour
+
+            if (urlError) {
+              console.error('Error creating signed URL:', urlError);
+            } else {
+              console.log('Signed File URL:', signedUrlData.signedUrl);
+              setcurrAssignmentUrl(signedUrlData.signedUrl)
+            }
           }
       }
       // TODO: Display the result in a modal or new section
-      setShowFileSelector(false);
-      setActiveTool(null);
-      setSelectedFiles([]);
-      setSelectedFilePaths([]);
-      setPrompt('');
       setIsGenerating(false);
       setGenerationProgress(0);
       setGenerationStatus('');
+      if (score_and_assignment.status === 'awaiting_feedback') {
+        setShowFeedbackModal(true);
+      } else {
+
+        setShowFileSelector(false);
+        setActiveTool(null);
+        setSelectedFiles([]);
+        setSelectedFilePaths([]);
+        setPrompt('');
+      }
     } catch (error) {
       console.error(`${option} generation error:`, error);
       alert(`Failed to generate ${option}`);
@@ -202,15 +330,15 @@ export default function CoursePage() {
         .single();
 
       if (rpcError || !data) {
-        console.error('Failed to delete embeddings:', rpcError?.message || 'No data returned');
-        alert('Failed to delete embeddings from database.');
+        console.log('Failed to delete embeddings:', rpcError?.message || 'No data returned');
+        alert('Warning: Embeddings for deleted file were not present in database. Confirm if this is expected behaviour');
         return;
       }
 
       // Check RPC response
       if (data.status !== 'success') {
-        console.error('Embedding deletion failed:', data.message);
-        alert(`Failed to delete embeddings: ${data.message}`);
+        console.log('Failed to delete embeddings:', data.message || 'No data returned');
+        alert('Warning: Embeddings for deleted file were not present in database. Confirm if this is expected behaviour');
         return;
       }
 
@@ -227,45 +355,102 @@ export default function CoursePage() {
 
   const fetchFiles = async () => {
     // const folders = ["assignments", "quizzes", "lectures", "summarizations"];
-    const folders = ["assignments", "quizzes", "lectures", "summarizations", "quiz_solutions", "assignment_solutions"];
+    const folders = ["assignments", "quizzes", "lectures", "summarizations", "flashcards", "quiz_solutions", "assignment_solutions"];
     const allFiles: FileItem[] = [];
 
     for (const folder of folders) {
-      const { data, error } = await supabase.storage.from("course-materials").list(`${courseID}/${folder}/`, {
-        limit: 100,
-        offset: 0,
-        sortBy: { column: "name", order: "asc" },
-      });
+      let path = `${courseID}/${folder}`;
 
-      if (error) {
-        console.error(`Failed to list files in ${folder}:`, error.message);
-        continue;
-      }
+      // For user-specific content, we need to list all user directories
+      if (folder === "summarizations" || folder === "flashcards") {
+        // First list all user directories
+        const { data: userDirs, error: dirError } = await supabase.storage
+          .from("course-materials")
+          .list(path);
 
-      const fileItems: FileItem[] = await Promise.all(
-        (data || []).map(async (item) => {
-          const filePath = `${courseID}/${folder}/${item.name}`;
+        if (dirError) {
+          console.error(`Failed to list user directories in ${folder}:`, dirError.message);
+          continue;
+        }
 
-          const { data: signedUrlData, error: urlError } = await supabase.storage
+        // For each user directory, list their files
+        for (const userDir of userDirs || []) {
+          const userPath = `${path}/${userDir.name}`;
+          const { data, error } = await supabase.storage
             .from("course-materials")
-            .createSignedUrl(filePath, 60 * 60); // 1-hour expiry
+            .list(userPath, {
+              limit: 100,
+              offset: 0,
+              sortBy: { column: "name", order: "asc" },
+            });
 
-          if (urlError) {
-            console.error(`Failed to create signed URL for ${filePath}:`, urlError.message);
+          if (error) {
+            console.error(`Failed to list files in ${userPath}:`, error.message);
+            continue;
           }
 
-          return {
-            name: `${folder}/${item.name}`, // include folder path
-            url: signedUrlData?.signedUrl ?? "#",
-          };
-        })
-      );
+          const fileItems = await Promise.all<FileItem | null>(
+            (data || []).map(async (item) => {
+              const filePath = `${userPath}/${item.name}`;
 
-      allFiles.push(...fileItems);
+              const { data: signedUrlData, error: urlError } = await supabase.storage
+                .from("course-materials")
+                .createSignedUrl(filePath, 60 * 60); // 1-hour expiry
+
+              if (urlError) {
+                console.error(`Failed to create signed URL for ${filePath}:`, urlError.message);
+                return null;
+              }
+
+              return {
+                name: `${folder}/${userDir.name}/${item.name}`, // include user directory in path
+                url: signedUrlData?.signedUrl ?? "#",
+              };
+            })
+          );
+
+          allFiles.push(...fileItems.filter((item): item is FileItem => item !== null));
+        }
+      } else {
+        // For non-user-specific content, list files directly
+        const { data, error } = await supabase.storage
+          .from("course-materials")
+          .list(path, {
+            limit: 100,
+            offset: 0,
+            sortBy: { column: "name", order: "asc" },
+          });
+
+        if (error) {
+          console.error(`Failed to list files in ${folder}:`, error.message);
+          continue;
+        }
+
+        const fileItems = await Promise.all<FileItem | null>(
+          (data || []).map(async (item) => {
+            const filePath = `${path}/${item.name}`;
+
+            const { data: signedUrlData, error: urlError } = await supabase.storage
+              .from("course-materials")
+              .createSignedUrl(filePath, 60 * 60); // 1-hour expiry
+
+            if (urlError) {
+              console.error(`Failed to create signed URL for ${filePath}:`, urlError.message);
+              return null;
+            }
+
+            return {
+              name: `${folder}/${item.name}`, // include folder path
+              url: signedUrlData?.signedUrl ?? "#",
+            };
+          })
+        );
+
+        allFiles.push(...fileItems.filter((item): item is FileItem => item !== null));
+      }
     }
 
     setFiles(allFiles);
-    // console.log(allFiles)
   };
 
   const handleSummarizeLecture = async () => {
@@ -416,7 +601,7 @@ export default function CoursePage() {
           <Box>
             <Typography variant="h6" gutterBottom>Resources</Typography>
 
-            {["assignments", "quizzes", "lectures", "summarizations", "quiz_solutions", "assignment_solutions"].map((folder) => (
+            {["assignments", "quizzes", "lectures", "summarizations", "flashcards", "quiz_solutions", "assignment_solutions"].map((folder) => (
               <Box key={folder} mb={4}>
                 <Typography variant="subtitle1" gutterBottom sx={{ textTransform: "capitalize" }}>
                   {folder}
@@ -493,6 +678,11 @@ export default function CoursePage() {
                 <List>
                   {files.filter((f) => f.name.startsWith(`${folder}/`)).map((file, index, arr) => {
                     const fileName = file.name.replace(`${folder}/`, "");
+                    // For user-specific content, show the user ID in the secondary text
+                    const isUserSpecific = folder === "summarizations" || folder === "flashcards";
+                    const userInfo = isUserSpecific ? ` (User: ${fileName.split('/')[0]})` : '';
+                    const displayName = isUserSpecific ? fileName.split('/').slice(1).join('/') : fileName;
+
                     return (
                       <Box key={file.name}>
                         <ListItem
@@ -518,10 +708,10 @@ export default function CoursePage() {
                           <ListItemText
                             primary={
                               <Link href={file.url} target="_blank" rel="noopener noreferrer" underline="hover">
-                                {fileName}
+                                {displayName}
                               </Link>
                             }
-                            secondary={`Uploaded to ${folder}`}
+                            secondary={`Uploaded to ${folder}${userInfo}`}
                           />
                         </ListItem>
                         {index < arr.length - 1 && <Divider />}
@@ -845,6 +1035,76 @@ export default function CoursePage() {
             Cancel
           </Button>
         </Box>
+                <Modal
+                    open={showFeedbackModal}
+                    onClose={() => setShowFeedbackModal(false)}
+                    aria-labelledby="feedback-modal-title"
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backdropFilter: 'blur(3px)',
+                    }}
+                  >
+                    <Sheet
+                      variant="outlined"
+                      sx={{
+                        width: { xs: '90%', sm: 500 },  // responsive width
+                        maxWidth: '90vw',
+                        borderRadius: 'md',
+                        p: 4,
+                        boxShadow: 'lg',
+                        bgcolor: 'background.surface',
+                      }}
+                    >
+                      <Typography level="h4" id="feedback-modal-title" mb={2}  sx={{ textAlign: 'center', display: 'block' }}>
+                        Assignment Ready for Feedback
+                      </Typography>
+
+                      <Typography
+                        level="body-sm"
+                        sx={{
+                          mb: 2,
+                          color: 'text.secondary',
+                          wordBreak: 'break-all',  // wrap long URLs
+                          overflowWrap: 'break-word'
+                        }}
+                      >
+                        Preview it here: <Link href={currAssignmentUrl} target="_blank">{currAssignmentUrl}</Link>
+                      </Typography>
+
+                      <FormControl fullWidth sx={{ mb: 2}}>
+                        <FormLabel  sx={{ textAlign: 'center', display: 'block' }}>Your Feedback</FormLabel>
+                        <Textarea
+                          sx={{ mt:2 }}
+                          minRows={5}
+                          value={userFeedback}
+                          onChange={(e) => setUserFeedback(e.target.value)}
+                          placeholder="Suggest improvements, or confirm if it looks good..."
+                        />
+                      </FormControl>
+
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                        <Button variant="outlined"
+                          onClick={() => {
+                            setShowFeedbackModal(false);
+                            handleGeneratewithFeedback();
+                          }}
+                          disabled={!userFeedback.trim()}
+                        >
+                          Generate Again
+                        </Button>
+
+                        <Button variant="contained"
+                          onClick={() => {  setShowFeedbackModal(false); }}
+                        >
+                          Confirm Assignment
+                        </Button>
+                      </Box>
+                    </Sheet>
+                  </Modal>
+
+
       </Paper>
     )}
 

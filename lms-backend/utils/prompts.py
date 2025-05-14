@@ -23,7 +23,7 @@ def getmetaprompt(raw_prompt, context,option):
 
             Respond ONLY with the structured assignment plan or invalid message.
         """
-    else:
+    elif option == 'quiz' :
         return  f"""
             You are an expert educational content creator specializing in designing conceptual quizzes to test theoretical understanding in subjects like machine learning, AI, data science, and fullstack development.
 
@@ -33,18 +33,35 @@ def getmetaprompt(raw_prompt, context,option):
             {context}
             === End Context ===
 
-            Determine whether this is a valid and meaningful topic for a conceptual quiz. If valid, generate a quiz that includes:
+            Determine whether this is a valid and meaningful topic for a conceptual quiz.
 
-            1. 3–5 Multiple Choice Questions (MCQs) — clearly indicate the correct answer with reasoning.
-            2. 2–3 True/False questions — also justify each answer briefly.
-            3. 4-5 Short Answer or Reasoning-based questions — prompt students to explain concepts or compare ideas in 1–3 sentences.
+            If valid, consider the context to generate the list of ALL QUIZ topics (major or minor) that should be included and are worth testing.
 
-            Ensure the quiz focuses on **core concepts**, **theory**, and **understanding**, not implementation or coding.
+            Use the context provided to guide the level of difficulty, terminology, and topics.
 
-            Use the context provided to guide the level of difficulty, terminology, and topics. If the prompt is invalid or nonsensical, respond with: "Invalid prompt: [reason]".
+            If the prompt is invalid or nonsensical, respond with: "Invalid prompt: [reason]".
 
-            Respond ONLY with the generated quiz or invalid message.
+            Respond ONLY with the exhaustive topic list or invalid message.
         """
+    else:   #'practice'
+        return f"""
+            You are an expert educational content creator specializing in designing conceptual quizzes for practice with solutions in subjects like machine learning, AI, data science, and fullstack development.
+
+            Given the raw prompt: "{raw_prompt}", and the following context from course materials:
+
+            === Context ===
+            {context}
+            === End Context ===
+
+            Determine whether this is a valid and meaningful topic for a conceptual quiz.
+
+             If valid, consider the context to generate the list of ALL QUIZ topics (major or minor) that should be included and are worth testing.
+
+            If the prompt is invalid or nonsensical, respond with: "Invalid prompt: [reason]".
+
+            Respond ONLY with the exhaustive topic list or invalid message.
+        """
+
 
 
 def getgenerationprompt(prompt, option):
@@ -54,7 +71,7 @@ def getgenerationprompt(prompt, option):
 
             For each coding task:
             - Use markdown to describe the task.
-            - Add appropriate Python code cells with TODO brackets.
+            - Add appropriate Python code cells with TODO hints in comments.
             - Import necessary libraries.
             - Initialize basic models or datasets.
             - Ensure logical progression (with NO OVERLAP) from task to task.
@@ -63,8 +80,9 @@ def getgenerationprompt(prompt, option):
             {prompt}
 
             Return the assignment in plain text with clear separation between markdown and code blocks.
+            ALWAYS enclose code blocks starting with <```python> format and ending in <```> format.
         """
-    else:
+    elif option == 'quiz' :
         return f"""
             You are an AI quiz generator. Convert the following structured quiz plan into a well-formatted, text-based quiz aimed at testing theoretical understanding of the topic.
 
@@ -95,6 +113,59 @@ def getgenerationprompt(prompt, option):
 
             Return the quiz in plain text and write according to the instructions above.
         """
+    else:  #'practice'
+        return f"""
+            You are an AI quiz generator. Convert the following structured quiz plan into a well-formatted, text-based quiz aimed at testing theoretical understanding of the topic.
+
+            Prompt:
+            {prompt}
+
+            Generate the quiz with the following format:
+            1. **Multiple Choice Questions (MCQs)**
+               - List 3–5 MCQs.
+               - Use clear formatting (e.g., A, B, C, D).
+               - These should test **theoretical understanding** of the ideas.
+
+            2. **True/False Questions**
+               - List 4–5 T/F questions.
+               - These should test **factual knowledge** of the ideas.
+
+            3. **Reasoning-Based or Short Answer Questions**
+               - Ask 4–5 conceptual or comparative / analytical questions.
+               - These should test **practicality and applications** of the concepts.
+
+            Ensure questions are concept-focused and avoid code-level implementation unless it's conceptual (e.g., algorithm behavior, model choices, complexity tradeoffs).
+
+            Provide solutions for all questions (**with working where required**).
+
+            Anything you want to be HIGHLIGHTED in the final file should be enclosed within 3 asterisks, example: ***MCQs***
+
+            DO NOT unnecessarily include other symbols in your text like double asterisks ** or ## signs etc. Only for formatting, use triple asterisks.
+
+            Return the quiz in plain text and write according to the instructions above.
+        """
+
+
+def getgenerationwithfeedbackprompt(assignment, feedback_prompt):
+    return f"""
+        You are editing and regenerating a programming assignment.
+        DO NOT write anything else (your thought process) other than the updated assignment in final answer, just return the assignment.
+        The assignment content is below:
+        =====================
+        {assignment}
+        =====================
+
+        RECONSIDER it STRICTLY based on the following feedback given, and then comprehensively regenerate the assignment,
+        editing only the relevant portions such that the following feedback is incorporated thoroughly.
+        If it needs a complete revision, then please follow through with it. DO NOT change the content unless specified in the feedback.
+
+        **Feedback**:
+        {feedback_prompt}
+
+         At the end, ONLY return the updated assignment in plain text with clear separation between markdown and code blocks.
+         ALWAYS enclose code blocks starting with <```python> format and ending in <```> format.
+    """
+
 
 def getverificationprompt(assignment, feedback_prompt):
     return f"""
@@ -137,7 +208,123 @@ def getverificationprompt(assignment, feedback_prompt):
          At the end, write the following in one line ... [[[REVIEW_SCHEME]]] = {{ 'clarity': CLARITY_SCORE, 'boilerplate': BOILERPLATE_SCORE, 'todo': TODO_SCORE, 'overlap': OVERLAP_SCORE, 'formatting': FORMATTING_SCORE, 'feedback': FEEDBACK_SCORE }}
     """
 
+# def getquizverificationprompt(quiz, feedback_prompt):
+#     return f"""
+#         You are reviewing a quiz designed to assess students' theoretical understanding and practical application of topics taught in class. The quiz content is below:
+#         =====================
+#         {quiz}
+#         =====================
 
+#         EVALUATE it STRICTLY based on the following criteria. Assign a score out of 10 for each and justify with 1-2 sentences.
+
+#         For each criterion, do the following:
+#         1. Give a score out of 10.
+#         2. Justify the score with 1-2 sentences.
+
+#         1. **Clarity and Relevance**:
+#           - Are the questions clearly worded and free from ambiguity?
+#           - Are they appropriate for the level of the course and relevant to topics taught?
+#           - Do they reflect the expected knowledge and skill level of students?
+
+#         2. **Coverage of Concepts**:
+#           - Does the quiz cover a diverse and representative set of concepts taught?
+#           - Are both theoretical and practical aspects of the topic included?
+#           - Does it balance breadth and depth appropriately?
+
+#         3. **Question Quality and Structure**:
+#           - Are MCQs structured well with plausible distractors?
+#           - Are True/False statements precise and unambiguous?
+#           - Are short/medium questions open-ended enough to assess understanding, but focused enough to guide students?
+
+#         4. **Cognitive Depth and Usefulness**:
+#           - Do questions vary in difficulty and promote higher-order thinking (not just recall)?
+#           - Are there any case-based or real-world application questions?
+#           - Does it test understanding, analysis, and application?
+
+#         5. **Task Redundancy / Overlap**:
+#           - Tasks should be distinct and may be divided into subtasks if complex.
+#           - Avoid repetition and ensure flow and progression in learning.
+
+#         6. **Feedback Incorporation**:
+#           {feedback_prompt}
+
+#          At the end, write the following in one line ... [[[REVIEW_SCHEME]]] = {{ 'clarity': CLARITY_SCORE, 'coverage': COVERAGE_SCORE, 'structure': STRUCTURE_SCORE, 'overlap': OVERLAP_SCORE, 'depth': DEPTH_SCORE, 'feedback': FEEDBACK_SCORE }}
+#     """
+
+def getquizverificationprompt(quiz, feedback_prompt):
+    return f"""
+    You are a meticulous and brutally honest educator tasked with dissecting and evaluating the quality of a student-designed quiz meant to assess theoretical understanding and practical application of topics taught in class.
+    Your job is not to merely review but to interrogate every choice made in the quiz—question wording, content selection, cognitive depth, and structure—with a fine-toothed comb.
+    Challenge every assumption. Be hyper-critical and assume nothing is adequate unless proven through rigor, clarity, and flawless execution.
+    Expose ambiguity, shallowness, redundancy, poor alignment with learning objectives, and any missed opportunities—no matter how subtle.
+    Even if the quiz seems serviceable, your goal is to highlight weaknesses in coverage, depth, construction, and learning value.
+    Never default to leniency. **Demand perfection, especially in the absence of prior feedback.**
+    The quiz content is below:
+        =====================
+        {quiz}
+        =====================
+
+        EVALUATE it STRICTLY based on the following criteria. Assign a score out of 10 for each and justify with detail.
+        
+        For each criterion, do the following:
+        1. Give a score out of 10.
+        2. Justify the score in detail.
+
+        1. **Clarity and Relevance**:
+          - Are the questions clearly worded and free from ambiguity?
+          - Are they appropriate for the level of the course and relevant to topics taught?
+          - Do they reflect the expected knowledge and skill level of students?
+
+        2. **Coverage of Concepts**:
+          - Does the quiz cover a diverse and representative set of concepts taught?
+          - Are both theoretical and practical aspects of the topic included?
+          - Does it balance breadth and depth appropriately?
+
+        3. **Question Quality and Structure**:
+          - Does the quiz contain the required 3-5 MCQs, 2-3 True/False statements, and 4-5 short/medium-length questions?
+          - Are MCQs structured well with plausible distractors?
+          - Are True/False statements precise and unambiguous?
+          - Are short/medium questions open-ended enough to assess understanding, but focused enough to guide students?
+
+        4. **Cognitive Depth and Usefulness**:
+          - Do questions vary in difficulty and promote higher-order thinking (not just recall)?
+          - Are there any case-based or real-world application questions?
+          - Does it test understanding, analysis, and application?
+
+        5. **Task Redundancy / Overlap**:
+          - Tasks should be distinct and may be divided into subtasks if complex.
+          - Avoid repetition and ensure flow and progression in learning.
+
+        6. **Feedback Incorporation**:
+          - {feedback_prompt}
+
+         At the end, write the following in one line ... [[[REVIEW_SCHEME]]] = {{ 'clarity': CLARITY_SCORE, 'coverage': COVERAGE_SCORE, 'structure': STRUCTURE_SCORE, 'overlap': OVERLAP_SCORE, 'depth': DEPTH_SCORE, 'feedback': FEEDBACK_SCORE }}
+"""
+
+def getragoptimizationprompt():
+  return """
+    You are an expert in information retrieval and vector-based semantic search.
+
+    Your job is to take a **messy, human-authored prompt** and extract from it a **precise, minimal query** that will retrieve only the most **relevant context** for solving the assignment.
+
+    Focus on **what information is actually needed** to perform the task (definitions, algorithms, math, code examples, etc). Strip away instructional text, formatting details, and conversational fluff.
+
+    You MUST:
+    - Use exact technical phrasing when possible
+    - Retain any important entities (e.g., "ResNet", "variational autoencoder", "KL divergence")
+    - Avoid vague filler like "please", "as a student", "write an assignment"
+    - Output a single sentence or question optimized for retrieval
+
+    Example:
+
+    Input:
+    You are a TA for a course on transformers. Write an assignment where students have to implement multi-head attention from scratch, evaluate it on a toy dataset, and compare it with a PyTorch version.
+
+    Optimized Query:
+    Multi-head attention implementation and evaluation compared to PyTorch version
+
+    Respond ONLY with the optimized query.
+  """
 
 # used to calculate final score during the verification stage / feedback loop
 COMPONENT_WEIGHTAGES = {
@@ -146,5 +333,14 @@ COMPONENT_WEIGHTAGES = {
         'todo': 0.25,
         'overlap': 0.1,
         'formatting': 0.05,
+        'feedback': 0.3
+}
+
+QUIZ_COMPONENT_WEIGHTAGES = {
+        'clarity': 0.15,
+        'coverage': 0.2,
+        'structure': 0.05,
+        'depth': 0.2,
+        'overlap': 0.1,
         'feedback': 0.3
 }

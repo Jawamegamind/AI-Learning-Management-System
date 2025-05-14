@@ -61,7 +61,7 @@ export default function SignIn() {
             setLoading(false);
         } catch (error) {
             console.error('Error:', error);
-            handleClick("Login failed", "error");
+            // handleClick("Login failed", "error");
         }
     };
 

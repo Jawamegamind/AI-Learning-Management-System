@@ -3,8 +3,8 @@ import os
 import logging
 from database.retriever import Retriever
 from fastapi import APIRouter, HTTPException, Request
-from utils.generation_workflow import generate_assignment_workflow
-from models.generation_model import AssignmentRequest, QuizRequest, SummarizeRequest
+from utils.generation_workflow import generate_assignment_workflow, generate_practice_qa_workflow
+from models.generation_model import AssignmentRequest, QuizRequest, SummarizeRequest, PracticeQARequest
 from fastapi import  UploadFile, File
 from fastapi.responses import JSONResponse
 import os
@@ -29,21 +29,32 @@ retriever = Retriever()
 async def generate_assignment(request: AssignmentRequest):
     try:
         print("hitting router, urls should be filepaths not urls", request.lecture_urls)
+        print(request)
         result = generate_assignment_workflow(
             input_content=request.prompt,
             openrouter_api_key=os.getenv("OPENROUTER_API_KEY"),
+            together_api_key=os.getenv("TOGETHER_API_KEY"),
             assignmentorquiz= "assignment",
-            urls=request.lecture_urls,
+            human_feedback = request.feedback,
+            prev_version = request.prev_version,
+            urls=request.lecture_urls
         )
 
         if result["status"] == "failed":
             raise HTTPException(status_code=400, detail=result["assignment"])
 
-        return {
-            "status": "success",
-            "assignment": result["assignment"],
-            "score": result['scores'][-1]
-        }
+        if result["status"] == "awaiting_feedback":
+            print("awaiting-feedback")
+            return {
+                "status": "awaiting_feedback",
+                "assignment": result["assignment"]
+            }
+
+        # return {
+        #     "status": "success",
+        #     "assignment": result["assignment"],
+        #     "score": result['scores'][-1]
+        # }
 
     except Exception as e:
         raise HTTPException(
@@ -62,8 +73,11 @@ async def generate_quiz(request: QuizRequest):
         result = generate_assignment_workflow(
             input_content=request.prompt,
             openrouter_api_key=os.getenv("OPENROUTER_API_KEY"),
+            together_api_key=os.getenv("TOGETHER_API_KEY"),
             assignmentorquiz= "quiz",
-            urls=request.lecture_urls,
+            human_feedback = "",
+            prev_version = "",
+            urls=request.lecture_urls
         )
         if result["status"] == "failed":
             raise HTTPException(status_code=400, detail=result["assignment"])
@@ -71,7 +85,7 @@ async def generate_quiz(request: QuizRequest):
         return {
             "status": "success",
             "assignment": result["assignment"],
-            "score": ""  #inapplicable as of now, since no feedback loop for quizzes yet
+            "score": result['scores'][-1]
         }
 
     except Exception as e:
@@ -161,6 +175,30 @@ async def summarize_lecture(request: SummarizeRequest):
         raise HTTPException(
             status_code=500,
             detail=f"Failed to summarize lecture: {str(e)}"
+        )
+
+
+@generation_router.post("/generate-practiceqas")
+async def generate_practiceqas(request: PracticeQARequest):
+    try:
+        result = generate_practice_qa_workflow(
+                input_content=request.prompt,
+                openrouter_api_key=os.getenv("OPENROUTER_API_KEY"),
+                difficulty=request.difficulty,
+                urls=request.lecture_urls
+            )
+        if result["status"] == "failed":
+            raise HTTPException(status_code=400, detail=result["practiceqas"])
+
+        return {
+            "status": "success",
+            "practice": result["practiceqas"],
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate practice Q/A s: {str(e)}"
         )
     
 @generation_router.post("/generate-markscheme")

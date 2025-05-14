@@ -22,6 +22,11 @@ interface FileItem {
   url: string;
 }
 
+interface RPCResponse {
+  status: string;
+  message: string;
+}
+
 interface FileTreeNode {
   type: 'folder' | 'file';
   name: string;
@@ -207,14 +212,16 @@ export default function CoursePage() {
         return;
       }
 
+      const rpcResponse = data as RPCResponse;
+
       // Check RPC response
-      if (data.status !== 'success') {
-        console.error('Embedding deletion failed:', data.message);
-        alert(`Failed to delete embeddings: ${data.message}`);
+      if (rpcResponse.status !== 'success') {
+        console.error('Embedding deletion failed:', rpcResponse.message);
+        alert(`Failed to delete embeddings: ${rpcResponse.message}`);
         return;
       }
 
-      console.log('Successfully deleted file and embeddings:', data.message);
+      console.log('Successfully deleted file and embeddings:', rpcResponse.message);
 
       // Update local state
       setFiles((prev) => prev.filter((f) => f.name !== fileName));
@@ -225,54 +232,12 @@ export default function CoursePage() {
     }
   };
 
-  // const fetchFiles = async () => {
-  //   // const folders = ["assignments", "quizzes", "lectures", "summarizations"];
-  //   const folders = ["assignments", "quizzes", "lectures", "summarizations", "quiz_solutions", "assignment_solutions", "quiz_submissions"];
-  //   const allFiles: FileItem[] = [];
-
-  //   for (const folder of folders) {
-  //     const { data, error } = await supabase.storage.from("course-materials").list(`${courseID}/${folder}/`, {
-  //       limit: 100,
-  //       offset: 0,
-  //       sortBy: { column: "name", order: "asc" },
-  //     });
-
-  //     if (error) {
-  //       console.error(`Failed to list files in ${folder}:`, error.message);
-  //       continue;
-  //     }
-
-  //     const fileItems: FileItem[] = await Promise.all(
-  //       (data || []).map(async (item) => {
-  //         const filePath = `${courseID}/${folder}/${item.name}`;
-
-  //         const { data: signedUrlData, error: urlError } = await supabase.storage
-  //           .from("course-materials")
-  //           .createSignedUrl(filePath, 60 * 60); // 1-hour expiry
-
-  //         if (urlError) {
-  //           console.error(`Failed to create signed URL for ${filePath}:`, urlError.message);
-  //         }
-
-  //         return {
-  //           name: `${folder}/${item.name}`, // include folder path
-  //           url: signedUrlData?.signedUrl ?? "#",
-  //         };
-  //       })
-  //     );
-
-  //     allFiles.push(...fileItems);
-  //   }
-
-  //   setFiles(allFiles);
-  //   // console.log(allFiles)
-  // };
   const fetchFiles = async () => {
     const folders = [
       "assignments",
       "quizzes",
       "lectures",
-      "summarizations",
+      "summarizations", "flashcards",
       "quiz_solutions",
       "assignment_solutions",
       "quiz_submissions",
@@ -337,37 +302,95 @@ export default function CoursePage() {
         }
       } else {
         // ✅ Handle flat folder structures
-        const { data, error } = await supabase.storage.from("course-materials").list(`${courseID}/${folder}/`, {
-          limit: 100,
-          offset: 0,
-          sortBy: { column: "name", order: "asc" },
-        });
-  
-        if (error) {
-          console.error(`Failed to list files in ${folder}:`, error.message);
-          continue;
-        }
-  
-        const fileItems: FileItem[] = await Promise.all(
-          (data || []).map(async (item) => {
-            const filePath = `${courseID}/${folder}/${item.name}`;
-  
-            const { data: signedUrlData, error: urlError } = await supabase.storage
+        let path = `${courseID}/${folder}`;
+        
+        // For user-specific content, we need to list all user directories
+        if (folder === "summarizations" || folder === "flashcards") {
+          // First list all user directories
+          const { data: userDirs, error: dirError } = await supabase.storage
+            .from("course-materials")
+            .list(path);
+
+          if (dirError) {
+            console.error(`Failed to list user directories in ${folder}:`, dirError.message);
+            continue;
+          }
+
+          // For each user directory, list their files
+          for (const userDir of userDirs || []) {
+            const userPath = `${path}/${userDir.name}`;
+            const { data, error } = await supabase.storage
               .from("course-materials")
-              .createSignedUrl(filePath, 60 * 60); // 1-hour expiry
-  
-            if (urlError) {
-              console.error(`Failed to create signed URL for ${filePath}:`, urlError.message);
+              .list(userPath, {
+                limit: 100,
+                offset: 0,
+                sortBy: { column: "name", order: "asc" },
+              });
+
+            if (error) {
+              console.error(`Failed to list files in ${userPath}:`, error.message);
+              continue;
             }
+
+            const fileItems = await Promise.all<FileItem | null>(
+              (data || []).map(async (item) => {
+                const filePath = `${userPath}/${item.name}`;
+
+                const { data: signedUrlData, error: urlError } = await supabase.storage
+                  .from("course-materials")
+                  .createSignedUrl(filePath, 60 * 60); // 1-hour expiry
+
+                if (urlError) {
+                  console.error(`Failed to create signed URL for ${filePath}:`, urlError.message);
+                  return null;
+                }
+
+                return {
+                  name: `${folder}/${userDir.name}/${item.name}`, // include user directory in path
+                  url: signedUrlData?.signedUrl ?? "#",
+                };
+              })
+            );
+
+            allFiles.push(...fileItems.filter((item): item is FileItem => item !== null));
+          }
+        } else {
+          // For non-user-specific content, list files directly
+          const { data, error } = await supabase.storage
+            .from("course-materials")
+            .list(path, {
+              limit: 100,
+              offset: 0,
+              sortBy: { column: "name", order: "asc" },
+            });
   
-            return {
-              name: `${folder}/${item.name}`,
-              url: signedUrlData?.signedUrl ?? "#",
-            };
-          })
-        );
+          if (error) {
+            console.error(`Failed to list files in ${folder}:`, error.message);
+            continue;
+          }
   
-        allFiles.push(...fileItems);
+          const fileItems = await Promise.all<FileItem | null>(
+            (data || []).map(async (item) => {
+              const filePath = `${path}/${item.name}`;
+  
+              const { data: signedUrlData, error: urlError } = await supabase.storage
+                .from("course-materials")
+                .createSignedUrl(filePath, 60 * 60); // 1-hour expiry
+  
+              if (urlError) {
+                console.error(`Failed to create signed URL for ${filePath}:`, urlError.message);
+                return null;
+              }
+  
+              return {
+                name: `${folder}/${item.name}`,
+                url: signedUrlData?.signedUrl ?? "#",
+              };
+            })
+          );
+  
+          allFiles.push(...fileItems.filter((item): item is FileItem => item !== null));
+        }
       }
     }
   
@@ -526,7 +549,7 @@ export default function CoursePage() {
           <Box>
             <Typography variant="h6" gutterBottom>Resources</Typography>
 
-            {["assignments", "quizzes", "lectures", "summarizations", "quiz_solutions", "assignment_solutions"].map((folder) => (
+            {["assignments", "quizzes", "lectures", "summarizations", "flashcards", "quiz_solutions", "assignment_solutions"].map((folder) => (
               <Box key={folder} mb={4}>
                 <Typography variant="subtitle1" gutterBottom sx={{ textTransform: "capitalize" }}>
                   {folder}
@@ -603,6 +626,11 @@ export default function CoursePage() {
                 <List>
                   {files.filter((f) => f.name.startsWith(`${folder}/`)).map((file, index, arr) => {
                     const fileName = file.name.replace(`${folder}/`, "");
+                    // For user-specific content, show the user ID in the secondary text
+                    const isUserSpecific = folder === "summarizations" || folder === "flashcards";
+                    const userInfo = isUserSpecific ? ` (User: ${fileName.split('/')[0]})` : '';
+                    const displayName = isUserSpecific ? fileName.split('/').slice(1).join('/') : fileName;
+
                     return (
                       <Box key={file.name}>
                         <ListItem
@@ -628,10 +656,10 @@ export default function CoursePage() {
                           <ListItemText
                             primary={
                               <Link href={file.url} target="_blank" rel="noopener noreferrer" underline="hover">
-                                {fileName}
+                                {displayName}
                               </Link>
                             }
-                            secondary={`Uploaded to ${folder}`}
+                            secondary={`Uploaded to ${folder}${userInfo}`}
                           />
                         </ListItem>
                         {index < arr.length - 1 && <Divider />}
@@ -772,8 +800,8 @@ export default function CoursePage() {
           alert("✅ Markscheme generated and uploaded to Resources > quiz_solutions.");
           fetchFiles();
           setSelectedLecture('');
-        } catch (err) {
-          console.error(err);
+        } catch (error: any) {
+          console.error(error);
           alert("❌ Failed to generate markscheme.");
         }
         setLoading(false);

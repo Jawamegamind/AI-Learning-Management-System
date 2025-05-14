@@ -121,20 +121,21 @@ export async function generateFileEmbeddingsonUpload(courseId: string, filePath:
     return response.data
 }
 
-export async function generateAssignmentOrQuiz(prompt: string, lectureUrls: string[], option: string) {
+export async function generateAssignmentOrQuiz(prompt: string, lectureUrls: string[], option: string, feedback: string, prev_version: string ) {
   try {
     console.log(prompt, lectureUrls, option)
     const endpoint = option === "assignment"
     ? "http://localhost:8000/api/generation/generate-assignment"
     : "http://localhost:8000/api/generation/generate-quiz";
-
+    console.log(endpoint, typeof prev_version)
     const response = await axios.post(endpoint, {
       prompt,
       lecture_urls: lectureUrls,
-      option
+      feedback,
+      prev_version
     });
 
-    if (response.data.status === "success") {
+    if (response.data.status === "success" || response.data.status === "awaiting_feedback") {
       return response.data;
     } else {
       throw new Error("Generation failed");

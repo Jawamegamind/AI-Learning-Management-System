@@ -81,24 +81,28 @@ export default function Dashboard() {
                 <div>
                     <h2>Welcome, {user.name}!</h2>
                     {/* <pre>{JSON.stringify(userAuth, null, 2)}</pre> */}
-                    <Typography>Your Courses</Typography>
-                    <Box sx={{ display: "flex", flexWrap: "wrap" }}>
-                        {coursesLoading ? (
-                            <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-                                <CircularProgress />
-                            </Box>
-                        ) : courses.length > 0 ? (
-                            courseEls
-                        ) : (
-                            <Typography>No courses found.</Typography>
-                        )}
+                    <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <Typography variant="h6" gutterBottom>Your Courses</Typography>
+                        <Box sx={{ display: "flex", flexWrap: "wrap" }}>
+                            {coursesLoading ? (
+                                <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                                    <CircularProgress />
+                                </Box>
+                            ) : courses.length > 0 ? (
+                                courseEls
+                            ) : (
+                                <Typography>No courses found.</Typography>
+                            )}
+                        </Box>
                     </Box>
-                    <Button variant="contained" color="primary" onClick={handleCreateCourse} sx={{ mt: 2 }}>
-                        Create New Course
-                    </Button>
-                    <Button variant="contained" color="primary" onClick={handleViewCourses} sx={{ mt: 2 }}>
-                        View All Courses
-                    </Button>
+                    <Box sx={{ mt: 4, display: 'flex', flexDirection: 'row', justifyContent: 'center', gap: 2 }}>
+                        <Button variant="contained" color="primary" onClick={handleCreateCourse}>
+                            Create New Course
+                        </Button>
+                        <Button variant="contained" color="primary" onClick={handleViewCourses}>
+                            View All Courses
+                        </Button>
+                    </Box>
                 </div>
             ) : (
                 <div style={{ display: 'flex', justifyContent: 'center', marginTop: '2rem' }}>
