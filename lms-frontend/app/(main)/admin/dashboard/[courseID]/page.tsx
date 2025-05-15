@@ -514,7 +514,7 @@ export default function CoursePage() {
           <Tab label="Overview" />
           <Tab label="Announcements" />
           <Tab label="Resources" />
-          <Tab label="Assignments" />
+          {/* <Tab label="Assignments" /> */}
           <Tab label="AI Tools" />
           <Tab label="Quiz Grading" />
           <Tab label="Assignment Grading" />
@@ -673,7 +673,7 @@ export default function CoursePage() {
         )}
 
 
-        {tabIndex === 3 && (
+        {/* {tabIndex === 3 && (
           <Box>
             <Typography variant="h6" gutterBottom>Assignments</Typography>
             <Grid2 container spacing={2}>
@@ -686,9 +686,9 @@ export default function CoursePage() {
               </Grid2>
             </Grid2>
           </Box>
-        )}
+        )} */}
 
-{tabIndex === 4 && (
+{tabIndex === 3 && (
   <Box>
     <Typography variant="h6" gutterBottom>AI Tools</Typography>
     <Grid2 container spacing={2}>
@@ -1036,7 +1036,7 @@ export default function CoursePage() {
   </Box>
 )}
 
-{tabIndex === 5 && (
+{tabIndex === 4 && (
   <Box>
     <Typography variant="h6" gutterBottom>Quiz Grading</Typography>
 
@@ -1222,7 +1222,7 @@ export default function CoursePage() {
   </Box>
 )}
 
-{tabIndex === 6 && (
+{tabIndex === 5 && (
   <Box>
     <Typography variant="h6" gutterBottom>Assignment Grading</Typography>
 
