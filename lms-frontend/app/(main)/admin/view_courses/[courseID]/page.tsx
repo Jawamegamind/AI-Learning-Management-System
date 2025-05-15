@@ -66,7 +66,7 @@ export default function ManageCoursePage() {
 
     const fetchCourseData = async () => {
         try {
-          const response = await fetchCourseDataFromID(courseID)
+          const response = await fetchCourseDataFromID(courseID as string)
           setCourse(response.course);
           setEnrollments(response.enrolments);
         } catch (error) {
@@ -78,7 +78,7 @@ export default function ManageCoursePage() {
     useLayoutEffect(() => {
         const fetchData = async () => {
           try {
-            const courseRes = await fetchCourseDataFromID(courseID)
+            const courseRes = await fetchCourseDataFromID(courseID as string)
             const courseData = courseRes.course;
             const enrolmentsData = courseRes.enrolments;
 
@@ -109,7 +109,7 @@ export default function ManageCoursePage() {
     const handleAssignUser = async () => {
         try {
           console.log("bef enrolling user",typeof courseID, typeof selectedUser, typeof selectedRole)
-          const resp = await enrollUser(courseID, selectedUser, selectedRole)
+          const resp = await enrollUser(courseID as string, selectedUser, selectedRole)
           if (resp === "User already enrolled in this course") {
             handleClick("User already enrolled in this course", "error");
           }
@@ -129,7 +129,7 @@ export default function ManageCoursePage() {
 
       const handleRoleChange = async (userId: string, newRole: string) => {
         try {
-          const resp = await updateUserRole(courseID, userId, newRole)
+          const resp = await updateUserRole(courseID as string, userId, newRole)
             if (resp === "User role updated successfully") {
                 handleClick("User role updated successfully", "success");
             } else {
@@ -143,7 +143,7 @@ export default function ManageCoursePage() {
 
       const handleRemoveUser = async (userId: string) => {
         try {
-          const resp = await unenrollUser(courseID, userId)
+          const resp = await unenrollUser(courseID as string, userId)
             if (resp === "User unenrolled") {
                 handleClick("User unenrolled successfully", "success");
             }

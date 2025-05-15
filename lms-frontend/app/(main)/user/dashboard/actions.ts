@@ -17,7 +17,10 @@ export async function fetchCurrentUser(user_id: string) {
     return response.data.user
 }
 
-export async function fetchUserCourses(user_id: string) {
+export async function fetchUserCourses(user_id: string): Promise<{
+  studentCourses: any[];
+  instructorCourses: any[];
+}> {
     // Send a request to your backend to fetch the user ernollments first
     const response = await axios.get(`http://localhost:8000/api/courses/get_user_enrollments/${user_id}`)
 
@@ -28,7 +31,10 @@ export async function fetchUserCourses(user_id: string) {
 
     if (!enrollments || enrollments.length === 0) {
         console.log("No enrollments found for the user")
-        return [];
+        return {
+      studentCourses: [],
+      instructorCourses: [],
+    };
     }
     else {
         // Separate course IDs by role

@@ -16,7 +16,7 @@ export async function fetchUsers() {
     return usersRes.data;
 }
 
-export async function enrollUser(courseId: string, selectedUser, selectedRole) {
+export async function enrollUser(courseId: string, selectedUser: string, selectedRole: string) {
     // Send a request to your backend to enroll the new user into this course under this role
     const response = await axios.post(`http://localhost:8000/api/courses/${courseId}/enroll_user`, {
         user_id: selectedUser,

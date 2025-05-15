@@ -30,6 +30,15 @@ interface FileTreeNode {
   children?: Record<string, FileTreeNode>;
 }
 
+interface DeleteEmbeddingsResponse {
+  status: 'success' | 'failure';
+  message: string;
+}
+
+interface DeleteEmbeddingsArgs {
+  file_path_param: string;
+}
+
 export default function CoursePage() {
   const { courseID } = useParams();
   const [tabIndex, setTabIndex] = useState(0);
@@ -325,9 +334,12 @@ export default function CoursePage() {
       const embedFilePath = storageFilePath;
 
       // Call delete_embeddings_by_path via RPC
-      const { data, error: rpcError } = await supabase
+      const rpcResult = await supabase
         .rpc('delete_embeddings_by_path', { file_path_param: embedFilePath })
-        .single();
+        .single() as { data: DeleteEmbeddingsResponse; error: any };
+
+      const data = rpcResult.data;
+      const rpcError = rpcResult.error;
 
       if (rpcError || !data) {
         console.log('Failed to delete embeddings:', rpcError?.message || 'No data returned');
@@ -658,7 +670,7 @@ export default function CoursePage() {
                           alert(`File uploaded, but signed url creation failed: ${error}`)
                           return
                         }
-                        const result = await generateFileEmbeddingsonUpload(courseID, filePath, signedUrlData.signedUrl);
+                        const result = await generateFileEmbeddingsonUpload(courseID as string, filePath, signedUrlData.signedUrl);
                         console.log("File processed successfully:", result);
 
                         alert(`File uploaded to ${folder} and processed successfully!`);
@@ -1057,12 +1069,12 @@ export default function CoursePage() {
                         bgcolor: 'background.surface',
                       }}
                     >
-                      <Typography level="h4" id="feedback-modal-title" mb={2}  sx={{ textAlign: 'center', display: 'block' }}>
+                      <Typography variant="h4" id="feedback-modal-title" mb={2}  sx={{ textAlign: 'center', display: 'block' }}>
                         Assignment Ready for Feedback
                       </Typography>
 
                       <Typography
-                        level="body-sm"
+                        variant="body2"
                         sx={{
                           mb: 2,
                           color: 'text.secondary',
