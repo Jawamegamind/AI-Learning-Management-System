@@ -30,8 +30,8 @@ export async function generateAssignmentOrQuiz(prompt: string, lectureUrls: stri
   try {
     console.log(prompt, lectureUrls, option)
     const endpoint = option === "assignment"
-    ? "http://localhost:8000/api/generation/generate-assignment"
-    : "http://localhost:8000/api/generation/generate-quiz";
+    ? "/api/generation/generate-assignment"
+    : "/api/generation/generate-quiz";
 
     // const response = await axios.post(endpoint, {
     //   prompt,
@@ -82,20 +82,19 @@ export async function summarizeLecture(lectureUrl: string) {
 export async function generateMarkscheme(file: File): Promise<string> {
     const formData = new FormData();
     formData.append("file", file);
-    console.log("do i come here?")
-    console.log(file)
-  
-    const res = await fetch("http://localhost:8000/api/generation/generate-markscheme", {
-      method: "POST",
-      body: formData,
+    console.log("Uploading file for markscheme generation:", file);
+
+    const res = await api.post("/api/generation/generate-markscheme", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
     });
-  
-    const data = await res.json();
-  
+
+    const data = res.data;
+
     if (!data || !data.status || data.status !== "success") {
       throw new Error("Markscheme generation failed");
     }
-  
+
     return data.markscheme_pdf;
-  }
-  
+}
