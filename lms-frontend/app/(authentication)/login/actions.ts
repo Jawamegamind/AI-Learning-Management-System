@@ -1,7 +1,7 @@
 'use server'
 
-// import axios from 'axios'
-import api from '@/app/_utils/api'
+import axios from 'axios'
+// import api from '@/app/_utils/api'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
@@ -35,16 +35,16 @@ export async function login(formData: FormData) {
         console.log('Data:', data)
 
         // Now basically signing in using our backend to retireve the user details
-        // const response = await axios.post('http://localhost:8000/api/login', {
-        //     user_id: data.user?.id ?? '',
-        //     email: formdata.email,
-        //     password: formdata.password
-        // })
-        const response = await api.post('/api/login', {
+        const response = await axios.post('http://localhost:8000/api/login', {
             user_id: data.user?.id ?? '',
             email: formdata.email,
             password: formdata.password
         })
+        // const response = await api.post('/api/login', {
+        //     user_id: data.user?.id ?? '',
+        //     email: formdata.email,
+        //     password: formdata.password
+        // })
         console.log("The backend's response to signing in user is",response.data)
 
         // Now here we need to check the user's role and based on that redirect to the appropriate dashboard

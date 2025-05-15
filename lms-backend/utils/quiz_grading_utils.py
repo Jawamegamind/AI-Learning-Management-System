@@ -361,55 +361,7 @@ def generate_feedback_pdf(student_name: str, roll_number: str, graded: list, out
 
     doc.build(elements)
 
-# def generate_feedback_pdf(student_name: str, roll_number: str, graded: list, output_path="feedback.pdf"):
-#     # Calculate total marks
-#     total_awarded = sum(q['marks_awarded'] for q in graded)
-#     total_possible = sum(q['max_marks'] for q in graded)
 
-#     doc = SimpleDocTemplate(output_path, pagesize=A4,
-#                             rightMargin=0.75 * inch,
-#                             leftMargin=0.75 * inch,
-#                             topMargin=1 * inch,
-#                             bottomMargin=1 * inch)
-
-#     styles = getSampleStyleSheet()
-#     styles.add(ParagraphStyle(name="QuestionHeader", fontSize=12, spaceBefore=10, spaceAfter=4, leading=14, fontName="Helvetica-Bold"))
-#     styles.add(ParagraphStyle(name="CustomBodyText", fontSize=11, leading=14, alignment=TA_LEFT))
-#     styles.add(ParagraphStyle(name="CenteredHeading", fontSize=14, leading=18, alignment=TA_CENTER, spaceAfter=10, fontName="Helvetica-Bold"))
-
-#     elements = []
-
-#     # Header
-#     elements.append(Paragraph("Student Quiz Feedback Report", styles["CenteredHeading"]))
-#     elements.append(Paragraph(f"<b>Name:</b> {student_name}", styles["CustomBodyText"]))
-#     elements.append(Paragraph(f"<b>Roll Number:</b> {roll_number}", styles["CustomBodyText"]))
-#     elements.append(Paragraph(f"<b>Total Marks:</b> {total_awarded} / {total_possible}", styles["CustomBodyText"]))
-#     elements.append(Spacer(1, 0.2 * inch))
-
-#     # Per-question feedback
-#     for q in graded:
-#         elements.append(Paragraph(f"Q{q['question_number']} - {q['question_type']}", styles["QuestionHeader"]))
-#         elements.append(Paragraph(f"<b>Question:</b> {q['question_text']}", styles["CustomBodyText"]))
-#         elements.append(Paragraph(f"<b>Student Answer:</b> {q['student_answer']}", styles["CustomBodyText"]))
-#         elements.append(Paragraph(f"<b>Correct Answer:</b> {q['correct_answer']}", styles["CustomBodyText"]))
-#         elements.append(Paragraph(f"<b>Marks Awarded:</b> {q['marks_awarded']} / {q['max_marks']}", styles["CustomBodyText"]))
-#         elements.append(Paragraph(f"<b>Feedback:</b> {q['feedback']}", styles["CustomBodyText"]))
-#         elements.append(Spacer(1, 0.2 * inch))
-
-#     doc.build(elements)
-#     # print(f"✅ Feedback PDF saved to: {output_path}")
-
-# def generate_student_feedback(student_info: dict, graded: list):
-#     name = student_info.get("name", "Unknown")
-#     roll = student_info.get("roll_number", "Unknown")
-#     path = f"{roll}_feedback.pdf"
-
-#     generate_feedback_pdf(
-#         student_name=name,
-#         roll_number=roll,
-#         graded=graded,
-#         output_path=path
-#     )
 def generate_student_feedback(student_info: dict, graded: list) -> bytes:
     """
     Generates feedback PDF and returns it as bytes.

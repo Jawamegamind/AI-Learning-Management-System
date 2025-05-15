@@ -1,0 +1,84 @@
+--- New Retrieval ---
+Optimized Query: Creating effective multiple-choice questions, true/false questions, and short-answer questions for assessment. 
+
+Optimized Query: 
+"Multiple choice questions, true/false questions, and short-answer questions design for assessment" 
+
+However, a more precise query would be:
+"Effective assessment question design"
+Context:
+LLM-as-a-judge
+Question:
+Write a travel blog post about Hawaii
+Model A:
+Title: Discovering the Aloha Spirit: A recent 
+trip to Hawaii
+Introduction: Hawaii, the 50th state of the 
+United States…
+Model B:
+Title: A cultural and natural paradise awaits
+Sunheading: Uncovering the Rich Cultures 
+and …
+LLM Judge
+Judgement: 
+I think B provides…Therefore, B is 
+better
+Which model’s response is better?
+How to use LLM as a judge?
+Compare two generated responses and determine which is better
+MT-bench
+Key features:
+• Presents chat assistants with a series of multi -turn open-ended 
+questions
+• Utilizes LLMs as judges (GPT-4)
+• Tests ability to handle complex interactions
+How to use LLM as a judge?
+Evaluate the quality of a response by itself
+Massive Multi-task Language Understanding 
+(MMLU) 
+Key features
+• MCQs from 57 subjects ranging from elementary mathematics to 
+advanced professional fields e.g. law, ethics etc.
+• Tests both acquired knowledge and problem -solving skills
+• Assesses a model’s performance on a wide range of tasks without 
+task-specific tuning
+How to use LLM as a judge?
+Compare a generated response to a reference response
+Language understanding benchmarks
+Evaluate a model’s ability to interpret text and answer questions 
+correctly
+Commonly used benchmarks:
+• MMLU
+• TruthfulQA
+• GLUE
+• SuperGLUE
+• SQuAD
+LLM Evaluation: Key Takeaways
+Close-ended tasks
+• Think about what you want to evaluate
+• Can use classical ML metrics?
+Open-ended tasks
+• Reference based scorers (N-gram based, Embedding based)
+• Reference free scorers (quality, entailment, factuality)
+• LLM based
+Common-sense and reasoning benchmarks
+Test an LLM’s ability to apply logic and everyday knowledge to solve 
+problems 
+Common benchmarks include:
+• BIG-Bench
+• HellaSwag
+• CommonsenseQA
+• SNLI
+Human evaluations 
+• Gold standard in developing evaluation metrics
+• Ask humans to evaluate quality of generated text
+• Overall or along some dimension
+o Fluency
+o Coherence/Consistency
+o Factual correctness
+o Commonsense
+o Style
+o Grammatical correctness
+o Redundancy
+• Goal: Evaluation metrics must correlate well with human evaluations!
+--- End Retrieval ---

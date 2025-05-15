@@ -45,6 +45,24 @@ def query_hf_api(prompt: str) -> str:
     return completion.choices[0].message.content
 
 def generate_markscheme_json(quiz_text: str, max_retries: int = 5, delay: int = 3) -> dict:
+#     prompt = f"""
+# You are an expert teaching assistant. Your job is to create a complete, valid JSON-based marking scheme for the following quiz.
+
+# === QUIZ START ===
+# {quiz_text}
+# === QUIZ END ===
+
+# For each question, return the following fields:
+# - question_number
+# - question_text
+# - question_type (one of: MCQ, True/False, Reasoning-Based)
+# - correct_answer
+# - accepted_answers
+# - marks
+# - notes
+
+# Strictly output only the raw JSON object.
+# """
     prompt = f"""
 You are an expert teaching assistant. Your job is to create a complete, valid JSON-based marking scheme for the following quiz.
 
@@ -56,12 +74,46 @@ For each question, return the following fields:
 - question_number
 - question_text
 - question_type (one of: MCQ, True/False, Reasoning-Based)
-- correct_answer
-- accepted_answers
-- marks
-- notes
+- correct_answer: a complete model answer or best possible response (even for reasoning-based)
+- accepted_answers: acceptable variations or key phrases (can be ["N/A"] for open-ended answers only if absolutely necessary)
+- marks: marks allocated
+- notes: any specific rubric or marking guideline
 
-Strictly output only the raw JSON object.
+Strictly output a JSON in this format:
+
+{{
+  "questions": [
+    {{
+      "question_number": "1",
+      "question_text": "...",
+      "question_type": "Reasoning-Based",
+      "correct_answer": "A complete, high-quality answer that would earn full marks",
+      "accepted_answers": ["key points or partial credit answers..."],
+      "marks": 5,
+      "notes": "Explain what earns full marks, partial marks, etc."
+    }}
+  ]
+}}
+
+{{
+  "questions": [
+    {{
+      "question_number": "1",
+      "question_text": "What is the primary purpose of clustering algorithms like K-Means?",
+      "question_type": "MCQ",
+      "correct_answer": "B",
+      "accepted_answers": ["B", "b", "To group similar data points into clusters"],
+      "marks": 1,
+      "notes": "Award marks only if they select the correct option. Do not accept vague answers."
+    }}
+    // more questions here...
+  ]
+}}
+
+⚠️ Important:
+- Do not output 'N/A' for correct_answer unless the question is opinion-based.
+- Strictly output *only* a raw JSON object — no preamble, explanation, markdown, or comments. If unsure about any field, still return a syntactically valid placeholder.
+
 """
     for attempt in range(1, max_retries + 1):
         response = query_hf_api(prompt)
@@ -89,20 +141,32 @@ Return JSON like:
 """
     try:
         response = query_hf_api(prompt)
-        response = response.strip().removeprefix("```json").removesuffix("```").strip()
-        scores = json.loads(response)
+        print("🔍 Raw LLM Response:", repr(response))
+
+        # Extract JSON using regex
+        match = re.search(r"\{[^{}]*\"completeness\"[^{}]*\}", response, re.DOTALL)
+        if not match:
+            raise ValueError("❌ No valid JSON block found in response.")
+        
+        scores = json.loads(match.group(0))
+
         average_score = sum(scores.values()) / len(scores)
+        print(f"📊 Evaluation Scores: {scores} | Average: {average_score:.2f}")
         return average_score
+
     except Exception as e:
+        print(f"❌ Exception during evaluation: {e}")
         return 0.0
 
-def approve_markscheme(markscheme: dict, quiz_text: str, threshold: float = 8.0, max_attempts: int = 3, delay: int = 3) -> dict:
+def approve_markscheme(markscheme: dict, quiz_text: str, threshold: float = 6.5, max_attempts: int = 2, delay: int = 3) -> dict:
     attempt = 1
     while attempt <= max_attempts:
+        print(f"evaluating markscheme")
         avg_score = evaluate_markscheme_quality(markscheme)
-        # print(f"the avg score is: {avg_score}")
+        print(f"the avg score is: {avg_score:.2f}")
         if avg_score >= threshold:
             return markscheme
+        print(f"❌ Markscheme rejected (score: {avg_score:.2f}). Retrying...\n")
         attempt += 1
         time.sleep(delay)
         markscheme = generate_markscheme_json(quiz_text)

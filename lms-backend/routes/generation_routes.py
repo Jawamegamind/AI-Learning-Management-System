@@ -218,12 +218,12 @@ async def generate_markscheme(file: UploadFile = File(...)):
         # Step 3: Generate and auto-approve JSON
         markscheme = generate_markscheme_json(quiz_text)
         logger.info(f"the inital markscheme is: {markscheme}")
-        # approved = approve_markscheme(markscheme, quiz_text)
+        approved = approve_markscheme(markscheme, quiz_text)
 
         # Step 4: Export to PDF
         pdf_output_path = tmp_path.replace(".pdf", "_solution.pdf")
-        # export_markscheme_to_pdf(approved, pdf_output_path)
-        export_markscheme_to_pdf(markscheme, pdf_output_path)
+        export_markscheme_to_pdf(approved, pdf_output_path)
+        # export_markscheme_to_pdf(markscheme, pdf_output_path)
 
         # Step 5: Return base64 encoded PDF
         with open(pdf_output_path, "rb") as f:
