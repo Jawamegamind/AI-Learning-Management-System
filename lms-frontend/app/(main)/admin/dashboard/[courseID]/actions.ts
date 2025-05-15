@@ -98,3 +98,35 @@ export async function generateMarkscheme(file: File): Promise<string> {
 
     return data.markscheme_pdf;
 }
+
+export async function gradeQuiz(
+  quizFile: File,           // <- this should match "quiz"
+  solutionFile: File,       // <- this should match "quiz_solution"
+  studentId: string
+): Promise<any> {
+  const formData = new FormData();
+  formData.append("quiz", quizFile);                   // should be "quiz"
+  formData.append("quiz_solution", solutionFile);      // should be "quiz_solution"
+  formData.append("student_id", studentId);
+
+  console.log("Uploading files for grading:", {
+    quizFile,
+    solutionFile,
+    studentId,
+  });
+
+  const res = await api.post("/api/grading/grade-quiz", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
+  const data = res.data;
+
+  if (!data || !data.status || data.status !== "success") {
+    throw new Error("Quiz grading failed");
+  }
+
+  return data;
+}
+

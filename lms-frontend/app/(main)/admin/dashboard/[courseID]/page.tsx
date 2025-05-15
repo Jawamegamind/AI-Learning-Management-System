@@ -8,7 +8,8 @@ import { createClient } from "@/utils/supabase/client";
 import ResponsiveAppBar from "@/app/_components/navbar";
 import LoadingModal from '@/app/_components/LoadingModal';
 
-import {fetchCourseDataFromID, generateFileEmbeddingsonUpload, generateAssignmentOrQuiz, summarizeLecture, generateMarkscheme} from './actions';
+import {fetchCourseDataFromID, generateFileEmbeddingsonUpload, generateAssignmentOrQuiz, summarizeLecture, generateMarkscheme, gradeQuiz} from './actions';
+import api from '@/app/_utils/api';
 
 interface Course {
   id: number;
@@ -1133,38 +1134,53 @@ export default function CoursePage() {
                     }
                     
                     const solutionBlob = await fetch(solutionFile.url).then((res) => res.blob());
-                    formData.append("quiz", new File([solutionBlob], solutionFile.name));
-                    // formData.append("quiz", new File([await (await fetch(quizFile.url)).blob()], quizFile.name));
-                    formData.append("quiz_solution", new File([await (await fetch(submission.url)).blob()], submission.name));
-                    formData.append("student_id", userId);
+                    // formData.append("quiz", new File([solutionBlob], solutionFile.name));
+                    // // formData.append("quiz", new File([await (await fetch(quizFile.url)).blob()], quizFile.name));
+                    // formData.append("quiz_solution", new File([await (await fetch(submission.url)).blob()], submission.name));
+                    // formData.append("student_id", userId);
+                    // const quizBlob = await fetch(quizFile.url).then((res) => res.blob());
+                    const studentID = userId;
 
-                    const res = await fetch("http://localhost:8000/api/grading/grade-quiz", {
-                      method: "POST",
-                      body: formData,
-                    });
+                    const data = await gradeQuiz(
+                      new File([solutionBlob], solutionFile.name),
+                      new File([await (await fetch(submission.url)).blob()], submission.name),
+                      studentID
+                    );
+                    // // const res = await fetch("http://backend:8000/api/grading/grade-quiz", {
+                    // //   method: "POST",
+                    // //   body: formData,
+                    // // });
+                    // const res = await api.post("/api/grading/grade-quiz", formData, {
+                    //   headers: {
+                    //     "Content-Type": "multipart/form-data",
+                    //   },
+                    // });
+                    
+
 
                     console.log("req has been sent")
 
                     // const data = await res.json();
-                    const data = await res.json();
-                    if (data.status === "success") {
-                      const { marks, feedback_pdf_base64 } = data;
+                    // const data = await res.json();
+                    // const data = res.data;
+                    // if (data.status === "success") {
+                    const { marks, feedback_pdf_base64 } = data;
 
-                      // Prepare files
-                      const feedbackBlob = new Blob([Uint8Array.from(atob(feedback_pdf_base64), c => c.charCodeAt(0))], { type: "application/pdf" });
-                      const marksBlob = new Blob([marks.toString()], { type: "text/plain" });
+                    // Prepare files
+                    const feedbackBlob = new Blob([Uint8Array.from(atob(feedback_pdf_base64), c => c.charCodeAt(0))], { type: "application/pdf" });
+                    const marksBlob = new Blob([marks.toString()], { type: "text/plain" });
 
-                      const feedbackFilePath = `${courseID}/quiz_feedback/${userId}/${selectedLecture.replace(".pdf", "_feedback.pdf")}`;
-                      const marksFilePath = `${courseID}/quiz_marks/${userId}/${selectedLecture.replace(".pdf", "_marks.txt")}`;
+                    const feedbackFilePath = `${courseID}/quiz_feedback/${userId}/${selectedLecture.replace(".pdf", "_feedback.pdf")}`;
+                    const marksFilePath = `${courseID}/quiz_marks/${userId}/${selectedLecture.replace(".pdf", "_marks.txt")}`;
 
-                      await supabase.storage.from("course-materials").upload(feedbackFilePath, feedbackBlob, { upsert: true });
-                      await supabase.storage.from("course-materials").upload(marksFilePath, marksBlob, { upsert: true });
+                    await supabase.storage.from("course-materials").upload(feedbackFilePath, feedbackBlob, { upsert: true });
+                    await supabase.storage.from("course-materials").upload(marksFilePath, marksBlob, { upsert: true });
 
-                      alert("Grading successful and uploaded!");
-                      fetchFiles();
-                    } else {
-                      alert("Grading failed.");
-                    }
+                    alert("Grading successful and uploaded!");
+                    fetchFiles();
+                    // } else {
+                    //   alert("Grading failed.");
+                    // }
                     // if (data.status === "success") {
                     //   alert("Grading successful!");
                     //   fetchFiles();
