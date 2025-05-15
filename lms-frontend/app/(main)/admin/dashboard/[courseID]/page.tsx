@@ -606,7 +606,7 @@ export default function CoursePage() {
                           alert(`File uploaded, but signed url creation failed: ${error}`)
                           return
                         }
-                        const result = await generateFileEmbeddingsonUpload(courseID, filePath, signedUrlData.signedUrl);
+                        const result = await generateFileEmbeddingsonUpload( Array.isArray(courseID) ? courseID[0] : courseID, filePath, signedUrlData.signedUrl);
                         console.log("File processed successfully:", result);
 
                         alert(`File uploaded to ${folder} and processed successfully!`);
