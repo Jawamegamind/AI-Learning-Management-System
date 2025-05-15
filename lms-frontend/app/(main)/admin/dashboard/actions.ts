@@ -1,10 +1,12 @@
 "use server"
 
-import axios from 'axios'
+// import axios from 'axios'
+import api from '@/app/_utils/api'
 
 export async function fetchCurrentUser(user_id: string) {
     // Send a request to your backend to fetch the user details
-    const response = await axios.get(`http://localhost:8000/api/user/${user_id}`)
+    // const response = await axios.get(`http://localhost:8000/api/user/${user_id}`)
+    const response = await api.get(`/api/user/${user_id}`)
 
     console.log("The user object reteived from the backend is", response.data.user)
 
@@ -13,7 +15,8 @@ export async function fetchCurrentUser(user_id: string) {
 
 export async function fetchUserCourses(user_id: string) {
     // Send a request to your backend to fetch the user ernollments first
-    const response = await axios.get(`http://localhost:8000/api/courses/get_user_enrollments/${user_id}`)
+    // const response = await axios.get(`http://localhost:8000/api/courses/get_user_enrollments/${user_id}`)
+    const response = await api.get(`/api/courses/get_user_enrollments/${user_id}`)
     
     console.log("The user courses reteived from the backend are", response.data.enrollments)
 
@@ -29,7 +32,8 @@ export async function fetchUserCourses(user_id: string) {
         console.log("The course IDs are", courseIDs)
 
         // Now fetch the courses using the courseIDs
-        const coursesResponse = await axios.post(`http://localhost:8000/api/courses/get_courses_by_ids`, courseIDs)
+        // const coursesResponse = await axios.post(`http://localhost:8000/api/courses/get_courses_by_ids`, courseIDs)
+        const coursesResponse = await api.post(`/api/courses/get_courses_by_ids`, courseIDs)        
         console.log("The courses are", coursesResponse.data.courses)
 
         return coursesResponse.data.courses;

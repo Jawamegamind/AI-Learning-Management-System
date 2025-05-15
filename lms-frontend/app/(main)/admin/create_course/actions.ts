@@ -1,6 +1,7 @@
 'use server'
 
-import axios from 'axios'
+// import axios from 'axios'
+import api from '@/app/_utils/api'
 // import { revalidatePath } from 'next/cache'
 // import { redirect } from 'next/navigation'
 
@@ -32,7 +33,11 @@ export async function createCourse(formData: FormData, currentUser: any) {
     console.log("The current user is",currentUser)
 
     // Now sending the request to the backend for course creation
-    const response = await axios.post('http://localhost:8000/api/courses/create_course', {
+    // const response = await axios.post('http://localhost:8000/api/courses/create_course', {
+    //     formdata,
+    //     currentUser
+    // })
+    const response = await api.post('/api/courses/create_course', {
         formdata,
         currentUser
     })
@@ -54,7 +59,8 @@ export async function getCurrentUser() {
 
     // Now basically using the id get the user details from the user table
     const userId = data.session?.user.id
-    const response = await axios.get(`http://localhost:8000/api/user/${userId}`)
+    // const response = await axios.get(`http://localhost:8000/api/user/${userId}`)
+    const response = await api.get(`/api/user/${userId}`)
     console.log("The backend's response to retrieving user data is",response.data)
 
     // Returning the user data
