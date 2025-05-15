@@ -1,0 +1,30 @@
+services:
+  backend:
+    build:
+      context: ./lms-backend
+      dockerfile: Dockerfile
+    container_name: lms-backend
+    ports:
+      - "8000:8000"
+    networks:
+      - lms_network
+
+  frontend:
+    build:
+      context: ./lms-frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_BACKEND_URL: http://backend:8000
+    container_name: lms-frontend
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./lms-frontend/.env.docker
+    networks:
+      - lms_network
+    depends_on:
+      - backend
+
+networks:
+  lms_network:
+    driver: bridge

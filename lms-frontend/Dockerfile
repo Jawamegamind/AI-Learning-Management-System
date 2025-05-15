@@ -1,27 +1,3 @@
-# FROM node:18-alpine AS base
-
-# WORKDIR /app
-
-# COPY package.json package-lock.json* pnpm-lock.yaml* ./
-
-# RUN if [ -f yarn.lock ]; then \
-#       yarn install --frozen-lockfile; \
-#     elif [ -f package-lock.json ]; then \
-#       npm ci; \
-#     elif [ -f pnpm-lock.yaml ]; then \
-#       corepack enable pnpm && pnpm i --frozen-lockfile; \
-#     else \
-#       echo "No lock file found. Please provide yarn.lock, package-lock.json, or pnpm-lock.yaml." && exit 1; \
-#     fi
-
-# COPY . .
-
-# RUN npm run build
-
-# EXPOSE 3000
-
-# CMD ["npm", "start"]
-
 FROM node:18-alpine AS base
 
 # Install dependencies only when needed
@@ -44,6 +20,9 @@ COPY . .
 # Learn more here: https://nextjs.org/telemetry
 # Uncomment the following line in case you want to disable telemetry during the build.
 ENV NEXT_TELEMETRY_DISABLED 1
+
+ARG NEXT_PUBLIC_BACKEND_URL
+ENV NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL}
 
 RUN npm run build
 

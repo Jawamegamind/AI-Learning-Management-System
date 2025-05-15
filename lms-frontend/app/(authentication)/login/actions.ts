@@ -1,6 +1,7 @@
 'use server'
 
-import axios from 'axios'
+// import axios from 'axios'
+import api from '@/app/_utils/api'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
@@ -8,6 +9,7 @@ import { createClient } from '@/utils/supabase/server'
 
 export async function login(formData: FormData) {
     console.log("login action")
+    console.log("The URL prefix is", process.env.NEXT_PUBLIC_BACKEND_URL)
     const supabase = await createClient()
   
     // type-casting here for convenience
@@ -33,7 +35,12 @@ export async function login(formData: FormData) {
         console.log('Data:', data)
 
         // Now basically signing in using our backend to retireve the user details
-        const response = await axios.post('http://localhost:8000/api/login', {
+        // const response = await axios.post('http://localhost:8000/api/login', {
+        //     user_id: data.user?.id ?? '',
+        //     email: formdata.email,
+        //     password: formdata.password
+        // })
+        const response = await api.post('/api/login', {
             user_id: data.user?.id ?? '',
             email: formdata.email,
             password: formdata.password
