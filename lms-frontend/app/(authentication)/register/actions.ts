@@ -1,6 +1,7 @@
 'use server'
 
-import axios from 'axios'
+// import axios from 'axios'
+import api from '@/app/_utils/api'
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
@@ -43,7 +44,14 @@ export async function register(formData: FormData) {
         console.log('Data from supabase auth is:', data)
 
         // Now that we have signed up using supabase, we can create a user in our own database using the auth user UID
-        const response = await axios.post('http://localhost:8000/api/register', {
+        // const response = await axios.post('http://localhost:8000/api/register', {
+        //     user_id: data.user?.id ?? '',
+        //     name: formdata.name,
+        //     email: formdata.email,
+        //     password: formdata.password,
+        //     role: 'user'        
+        // })
+        const response = await api.post('/api/register', {
             user_id: data.user?.id ?? '',
             name: formdata.name,
             email: formdata.email,
