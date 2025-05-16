@@ -99,6 +99,26 @@ export async function generateMarkscheme(file: File): Promise<string> {
     return data.markscheme_pdf;
 }
 
+export async function generateMarkschemeAssignment(file: File): Promise<string> {
+    const formData = new FormData();
+    formData.append("file", file);
+    console.log("Uploading file for markscheme generation:", file);
+
+    const res = await api.post("/api/generation/generate-assignment-markscheme", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    const data = res.data;
+
+    if (!data || !data.status || data.status !== "success") {
+      throw new Error("Markscheme generation failed");
+    }
+
+    return data.markscheme_pdf;
+}
+
 export async function gradeQuiz(
   quizFile: File,           // <- this should match "quiz"
   solutionFile: File,       // <- this should match "quiz_solution"
@@ -125,6 +145,38 @@ export async function gradeQuiz(
 
   if (!data || !data.status || data.status !== "success") {
     throw new Error("Quiz grading failed");
+  }
+
+  return data;
+}
+
+
+export async function gradeAssignment(
+  assignmentFile: File,           // <- this should match "assignment"
+  solutionFile: File,       // <- this should match "assignment_solution"
+  studentId: string
+): Promise<any> {
+  const formData = new FormData();
+  formData.append("assignment", assignmentFile);                   // should be "assignment"
+  formData.append("assignment_solution", solutionFile);      // should be "assignment_solution"
+  formData.append("student_id", studentId);
+
+  console.log("Uploading files for grading:", {
+    assignmentFile,
+    solutionFile,
+    studentId,
+  });
+
+  const res = await api.post("/api/grading/grade-assignment", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
+  const data = res.data;
+
+  if (!data || !data.status || data.status !== "success") {
+    throw new Error("Assignment grading failed");
   }
 
   return data;

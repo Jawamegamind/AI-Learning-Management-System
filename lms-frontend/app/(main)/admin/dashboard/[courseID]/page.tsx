@@ -8,7 +8,7 @@ import { createClient } from "@/utils/supabase/client";
 import ResponsiveAppBar from "@/app/_components/navbar";
 import LoadingModal from '@/app/_components/LoadingModal';
 
-import {fetchCourseDataFromID, generateFileEmbeddingsonUpload, generateAssignmentOrQuiz, summarizeLecture, generateMarkscheme, gradeQuiz} from './actions';
+import {fetchCourseDataFromID, generateFileEmbeddingsonUpload, generateAssignmentOrQuiz, summarizeLecture, generateMarkscheme, gradeQuiz, gradeAssignment, generateMarkschemeAssignment} from './actions';
 import api from '@/app/_utils/api';
 
 interface Course {
@@ -854,19 +854,20 @@ export default function CoursePage() {
           const blob = await fetch(selectedFile.url).then((res) => res.blob());
           const fileName = selectedFile.name.replace("assignments/", "");
           const formData = new FormData();
-          formData.append("file", new File([blob], fileName));
+          // formData.append("file", new File([blob], fileName));
 
-          const res = await fetch("http://localhost:8000/api/generation/generate-assignment-markscheme", {
-            method: "POST",
-            body: formData,
-          });
+          // const res = await fetch("http://localhost:8000/api/generation/generate-assignment-markscheme", {
+          //   method: "POST",
+          //   body: formData,
+          // });
+          const base64PDF = await generateMarkschemeAssignment(new File([blob], fileName))
 
-          const data = await res.json();
-          if (!data || data.status !== "success") throw new Error("Invalid response");
+          // const data = await res.json();
+          // if (!data || data.status !== "success") throw new Error("Invalid response");
 
           // ✅ Decode base64 PDF
-          const pdfBuffer = Uint8Array.from(atob(data.markscheme_pdf), (c) => c.charCodeAt(0));
-
+          // const pdfBuffer = Uint8Array.from(atob(data.markscheme_pdf), (c) => c.charCodeAt(0));
+           const pdfBuffer = Uint8Array.from(atob(base64PDF), (c) => c.charCodeAt(0));
           const savePath = `${courseID}/assignment_solutions/${fileName.replace(".ipynb", "")}_markscheme.pdf`;
 
           const { error } = await supabase.storage
@@ -1330,20 +1331,20 @@ export default function CoursePage() {
                     }
 
                     const submissionBlob = await fetch(submission.url).then(res => res.blob());
-
+                    const solutionBlob = await fetch(solutionFile.url).then((res) => res.blob());
                     const formData = new FormData();
-                    formData.append("assignment", new File([submissionBlob], submission.name));
-                    formData.append("assignment_solution", new File([await (await fetch(solutionFile.url)).blob()], solutionFile.name));
-                    formData.append("student_id", userId);
+                    // formData.append("assignment", new File([submissionBlob], submission.name));
+                    // formData.append("assignment_solution", new File([await (await fetch(solutionFile.url)).blob()], solutionFile.name));
+                    // formData.append("student_id", userId);
+                    const studentID = userId;
 
-                    const res = await fetch("http://localhost:8000/api/grading/grade-assignment", {
-                      method: "POST",
-                      body: formData,
-                    });
-
-                    const data = await res.json();
-                    if (data.status === "success") {
-                      const { marks, feedback_pdf_base64 } = data;
+                    const data = await gradeAssignment(
+                      new File([submissionBlob], submission.name),
+                      new File([solutionBlob], solutionFile.name),
+                      studentID
+                    )
+                    
+                    const { marks, feedback_pdf_base64 } = data;
 
                       const feedbackBlob = new Blob(
                         [Uint8Array.from(atob(feedback_pdf_base64), c => c.charCodeAt(0))],
@@ -1359,9 +1360,6 @@ export default function CoursePage() {
 
                       alert("✅ Grading successful and uploaded!");
                       fetchFiles();
-                    } else {
-                      alert("Grading failed.");
-                    }
                   }}
                 >
                   Grade
