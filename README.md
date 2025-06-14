@@ -2,6 +2,8 @@
 
 An AI-powered Learning Management System built with **Next.js** (frontend) and **FastAPI** (backend), designed to streamline teaching and learning using intelligent content generation, grading assistance, and student support.
 
+**Material UI** used for frontend deisgn and **Supabase** for user authentication, storage and vector embeddings.
+
 ---
 
 ## 🚀 Setup Guide
