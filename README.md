@@ -100,12 +100,11 @@ You can find a detailed project report including design decisions, architecture,
 
 ## 👥 Contributors
 
-- **Jawad Saeed** – Full Stack Developer, AI Integration
+- **Jawad Saeed**
+- **Ibrahim Farrukh**
+- **Muhammad Ahmed**
+- **Huraira Anwer**
+- **Junaid Jamshed**
 
 ---
-
-## 📬 Contact
-
-For questions, feedback, or collaborations:  
-📧 **jawad.saeed@example.com** *(Replace with your email)*
 
